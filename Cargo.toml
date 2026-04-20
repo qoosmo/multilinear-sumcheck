@@ -1,0 +1,39 @@
+[package]
+name        = "mlp_pro"
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["Ali Mkhida <ali@algorizk.com>", "Adil Iguider <adil@inpt.ac.ma>"]
+description = "Multilinear polynomials via tree-based circuit and the Sumcheck protocol"
+license     = "MIT OR Apache-2.0"
+repository  = "https://github.com/algorizk/mlp-pro"
+keywords    = ["cryptography", "sumcheck", "multilinear", "zkp", "zero-knowledge"]
+categories  = ["cryptography", "mathematics"]
+readme      = "README.md"
+
+[lib]
+name = "mlp_pro"
+path = "src/lib.rs"
+
+[[bench]]
+name    = "sumcheck"
+harness = false
+
+[dependencies]
+ark-ff    = "0.4"
+ark-bn254 = "0.4"
+ark-std   = "0.4"
+rayon     = "1.8"
+[dev-dependencies]
+ark-poly  = "0.4"
+criterion = { version = "0.5", features = ["html_reports"] }
+rand      = "0.8"
+
+[profile.release]
+opt-level     = 3
+lto           = "fat"
+codegen-units = 1
+panic         = "abort"
+
+[profile.bench]
+inherits = "release"
+debug    = true

@@ -1,0 +1,19 @@
+# Rust
+target/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Rust backup files
+**/*.rs.bk
