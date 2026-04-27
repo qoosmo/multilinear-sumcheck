@@ -23,8 +23,9 @@ ark-ff    = "0.4"
 ark-bn254 = "0.4"
 ark-std   = "0.4"
 rayon     = "1.8"
+
 [dev-dependencies]
-ark-poly  = "0.4"
+ark-poly  = { version = "0.4", features = ["parallel"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 rand      = "0.8"
 
