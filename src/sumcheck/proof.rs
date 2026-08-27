@@ -3,9 +3,9 @@
 //! This module defines the two data types that constitute a Sumcheck proof:
 //!
 //! - [`RoundPoly`]     — the degree-1 polynomial `s_j(X_j) = a + b·X_j`
-//!                       sent by the prover at each round.
+//!   sent by the prover at each round.
 //! - [`SumcheckProof`] — the complete transcript: claimed sum `h` plus
-//!                       the `n` round polynomials `s_1, …, s_n`.
+//!   the `n` round polynomials `s_1, …, s_n`.
 //!
 //! # Protocol recap
 //!
@@ -23,10 +23,10 @@
 //! The verifier checks `s_j(0) + s_j(1) = s_{j-1}(r_{j-1})` and then
 //! samples a fresh challenge `r_j`.
 //!
-//! From the paper (§5):
+//! In the tree notation used by this crate:
 //! - **Canonical basis:** `s_j(X_j) = h_2' + h_3' · X_j`
-//! - **Lagrange basis:**  `s_j(X_j) = h_2' + h_3' · X_j`  (same form,
-//!   different recurrence for `h_2'` and `h_3'`)
+//! - **Lagrange basis:**  the same affine form is reconstructed from
+//!   `s_j(0)` and `s_j(1)`, using the Lagrange recurrence.
 //!
 //! In both cases the round polynomial is degree-1 and is fully described
 //! by two field elements.
@@ -42,12 +42,12 @@ use std::fmt;
 ///
 /// This is the message the prover sends in each round of the Sumcheck
 /// protocol.  Since `f` is multilinear (degree at most 1 in each
-/// variable), every round polynomial has degree exactly 1.
+/// variable), every round polynomial has degree at most 1.
 ///
-/// # Paper notation
+/// # Tree notation
 ///
-/// The paper writes `s_j(X_j) = h_2' + h_3' · X_j`.
-/// Here `a = h_2'` and `b = h_3'`.
+/// In the canonical tree representation,
+/// `s_j(X_j) = h_2' + h_3' · X_j`, so `a = h_2'` and `b = h_3'`.
 ///
 /// # Encoding
 ///
@@ -154,14 +154,17 @@ pub struct SumcheckProof<F: Field> {
 
     /// The `n` round polynomials `s_1, …, s_n`.
     ///
-    /// `round_polys[j-1]` = `s_j` (0-based storage, 1-based paper index).
+    /// `round_polys[j-1]` = `s_j` (0-based storage, 1-based round index).
     pub round_polys: Vec<RoundPoly<F>>,
 }
 
 impl<F: Field> SumcheckProof<F> {
     /// Construct a proof from a claimed sum and a vector of round polynomials.
     pub fn new(claimed_sum: F, round_polys: Vec<RoundPoly<F>>) -> Self {
-        Self { claimed_sum, round_polys }
+        Self {
+            claimed_sum,
+            round_polys,
+        }
     }
 
     /// Number of variables `n` — equals the number of rounds.
@@ -174,14 +177,15 @@ impl<F: Field> SumcheckProof<F> {
         1 + 2 * self.round_polys.len()
     }
 
-    /// The round polynomial `s_j` using the **1-based paper index**.
+    /// The round polynomial `s_j` using the **1-based round index**.
     ///
     /// # Panics
     /// Panics if `j == 0` or `j > n`.
     pub fn round_poly(&self, j: usize) -> &RoundPoly<F> {
         assert!(
             j >= 1 && j <= self.round_polys.len(),
-            "round index {j} out of range [1, {}]", self.round_polys.len()
+            "round index {j} out of range [1, {}]",
+            self.round_polys.len()
         );
         &self.round_polys[j - 1]
     }
@@ -196,7 +200,9 @@ mod tests {
     use super::*;
     use ark_bn254::Fr;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── RoundPoly construction ────────────────────────────────────────────────
 
@@ -221,7 +227,7 @@ mod tests {
         let s1 = fr(13);
         let s = RoundPoly::from_evaluations(s0, s1);
         assert_eq!(s.eval_at_zero(), s0);
-        assert_eq!(s.eval_at_one(),  s1);
+        assert_eq!(s.eval_at_one(), s1);
     }
 
     // ── RoundPoly evaluation ──────────────────────────────────────────────────
@@ -287,10 +293,7 @@ mod tests {
 
     #[test]
     fn proof_size_is_2n_plus_1() {
-        let polys = vec![
-            RoundPoly::new(fr(1), fr(2)),
-            RoundPoly::new(fr(3), fr(4)),
-        ];
+        let polys = vec![RoundPoly::new(fr(1), fr(2)), RoundPoly::new(fr(3), fr(4))];
         let proof = SumcheckProof::new(fr(10), polys);
         // n=2: size = 2*2+1 = 5
         assert_eq!(proof.size_in_field_elements(), 5);
@@ -344,10 +347,7 @@ mod tests {
         let r1 = fr(3);
 
         // Round 1 check: s_1(0) + s_1(1) = claimed_sum
-        assert_eq!(
-            proof.round_poly(1).sum_over_boolean(),
-            proof.claimed_sum
-        );
+        assert_eq!(proof.round_poly(1).sum_over_boolean(), proof.claimed_sum);
 
         // Round 2 check: s_2(0) + s_2(1) = s_1(r_1)
         assert_eq!(

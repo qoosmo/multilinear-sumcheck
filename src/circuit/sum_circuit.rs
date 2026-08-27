@@ -16,8 +16,8 @@
 //!
 //! # Indexing convention
 //!
-//! 1-based throughout, matching the paper exactly.
-//! Internal storage is 0-based: paper index `j` → `data[j-1]`.
+//! The mathematical tree notation is 1-based.
+//! Internal storage is 0-based: tree index `j` → `data[j-1]`.
 //!
 //! ```text
 //! layer 0 :  j = 1                    (root  = H(f))
@@ -58,7 +58,7 @@ pub trait SumCircuit<F: Field> {
         1 << self.num_vars()
     }
 
-    /// Get `h_j` using the **1-based paper index**.
+    /// Get `h_j` using the **1-based tree index**.
     ///
     /// # Panics
     /// Panics if `j == 0` or `j > 2N − 1`.
@@ -115,11 +115,11 @@ where
     // Propagate bottom-up from layer n-1 down to layer 0.
     for i in (0..n).rev() {
         let layer_start_0based = (1usize << i) - 1;
-        let layer_size         = 1usize << i;
+        let layer_size = 1usize << i;
         for t in 0..layer_size {
             let parent = layer_start_0based + t;
-            let left   = 2 * parent + 1;
-            let right  = 2 * parent + 2;
+            let left = 2 * parent + 1;
+            let right = 2 * parent + 2;
             data[parent] = recurrence(data[left], data[right]);
         }
     }
@@ -171,23 +171,25 @@ impl<F: Field> CanonicalSumCircuit<F> {
     /// # Complexity
     /// `O(N)` — exactly `N − 1` pairs of additions.
     pub fn build(f: &CanonicalPoly<F>) -> Self {
-        let n     = f.num_vars();
+        let n = f.num_vars();
         let big_n = f.num_evals();
 
         // For n ∈ {10, 15, 20}: zero-cost borrow of the pre-computed static table.
         // For other n: single heap allocation, used here and dropped immediately.
-        let table  = get_or_build(n);
+        let table = get_or_build(n);
         let coeffs = f.coeffs();
-        let leaves: Vec<F> = (0..big_n)
-            .map(|k| coeffs[table[k]])
-            .collect();
+        let leaves: Vec<F> = (0..big_n).map(|k| coeffs[table[k]]).collect();
 
         // h_j = h_{2j} + h_{2j} + h_{2j+1}
         // Replaces 2·h_{2j} + h_{2j+1}: one multiplication + one addition
         // with two additions — cheaper on BN254 where mul >> add.
         let data = build_from_leaves(&leaves, |l, r| l + l + r);
 
-        Self { num_vars: n, big_n, data }
+        Self {
+            num_vars: n,
+            big_n,
+            data,
+        }
     }
 
     /// Build directly from a leaf slice already in bit-reversed order.
@@ -199,35 +201,45 @@ impl<F: Field> CanonicalSumCircuit<F> {
             !leaves.is_empty() && leaves.len().is_power_of_two(),
             "CanonicalSumCircuit::from_leaves: length must be a power of two"
         );
-        let big_n    = leaves.len();
+        let big_n = leaves.len();
         let num_vars = big_n.trailing_zeros() as usize;
-        let data     = build_from_leaves(leaves, |l, r| l + l + r);
-        Self { num_vars, big_n, data }
+        let data = build_from_leaves(leaves, |l, r| l + l + r);
+        Self {
+            num_vars,
+            big_n,
+            data,
+        }
     }
 }
 
 impl<F: Field> SumCircuit<F> for CanonicalSumCircuit<F> {
     #[inline]
-    fn num_vars(&self) -> usize { self.num_vars }
+    fn num_vars(&self) -> usize {
+        self.num_vars
+    }
 
     #[inline]
     fn h(&self, j: usize) -> F {
         assert!(
-            j >= 1 && j <= 2 * self.big_n - 1,
-            "h index {j} out of range [1, {}]", 2 * self.big_n - 1
+            j >= 1 && j < 2 * self.big_n,
+            "h index {j} out of range [1, {}]",
+            2 * self.big_n - 1
         );
         self.data[j - 1]
     }
 
     fn leaves(&self) -> &[F] {
-        &self.data[self.big_n - 1 .. 2 * self.big_n - 1]
+        &self.data[self.big_n - 1..2 * self.big_n - 1]
     }
 
     fn layer(&self, i: usize) -> &[F] {
-        assert!(i <= self.num_vars,
-            "layer {i} out of range [0, {}]", self.num_vars);
+        assert!(
+            i <= self.num_vars,
+            "layer {i} out of range [0, {}]",
+            self.num_vars
+        );
         let start = (1usize << i) - 1;
-        let end   = (1usize << (i + 1)) - 1;
+        let end = (1usize << (i + 1)) - 1;
         &self.data[start..end]
     }
 
@@ -281,19 +293,21 @@ impl<F: Field> LagrangeSumCircuit<F> {
     /// # Complexity
     /// `O(N)` — exactly `N − 1` additions.
     pub fn build(f: &LagrangePoly<F>) -> Self {
-        let n     = f.num_vars();
+        let n = f.num_vars();
         let big_n = f.num_evals();
 
         // For n ∈ {10, 15, 20}: zero-cost borrow of the pre-computed static table.
         // For other n: single heap allocation, used here and dropped immediately.
         let table = get_or_build(n);
         let evals = f.evals();
-        let leaves: Vec<F> = (0..big_n)
-            .map(|k| evals[table[k]])
-            .collect();
+        let leaves: Vec<F> = (0..big_n).map(|k| evals[table[k]]).collect();
 
         let data = build_from_leaves(&leaves, |l, r| l + r);
-        Self { num_vars: n, big_n, data }
+        Self {
+            num_vars: n,
+            big_n,
+            data,
+        }
     }
 
     /// Build directly from a leaf slice already in bit-reversed order.
@@ -305,42 +319,50 @@ impl<F: Field> LagrangeSumCircuit<F> {
             !leaves.is_empty() && leaves.len().is_power_of_two(),
             "LagrangeSumCircuit::from_leaves: length must be a power of two"
         );
-        let big_n    = leaves.len();
+        let big_n = leaves.len();
         let num_vars = big_n.trailing_zeros() as usize;
-        let data     = build_from_leaves(leaves, |l, r| l + r);
-        Self { num_vars, big_n, data }
+        let data = build_from_leaves(leaves, |l, r| l + r);
+        Self {
+            num_vars,
+            big_n,
+            data,
+        }
     }
 }
 
 impl<F: Field> SumCircuit<F> for LagrangeSumCircuit<F> {
     #[inline]
-    fn num_vars(&self) -> usize { self.num_vars }
+    fn num_vars(&self) -> usize {
+        self.num_vars
+    }
 
     #[inline]
     fn h(&self, j: usize) -> F {
         assert!(
-            j >= 1 && j <= 2 * self.big_n - 1,
-            "h index {j} out of range [1, {}]", 2 * self.big_n - 1
+            j >= 1 && j < 2 * self.big_n,
+            "h index {j} out of range [1, {}]",
+            2 * self.big_n - 1
         );
         self.data[j - 1]
     }
 
     fn leaves(&self) -> &[F] {
-        &self.data[self.big_n - 1 .. 2 * self.big_n - 1]
+        &self.data[self.big_n - 1..2 * self.big_n - 1]
     }
 
     fn layer(&self, i: usize) -> &[F] {
-        assert!(i <= self.num_vars,
-            "layer {i} out of range [0, {}]", self.num_vars);
+        assert!(
+            i <= self.num_vars,
+            "layer {i} out of range [0, {}]",
+            self.num_vars
+        );
         let start = (1usize << i) - 1;
-        let end   = (1usize << (i + 1)) - 1;
+        let end = (1usize << (i + 1)) - 1;
         &self.data[start..end]
     }
 
     fn verify_recurrence(&self) -> bool {
-        (1..self.big_n).all(|j| {
-            self.data[j - 1] == self.data[2 * j - 1] + self.data[2 * j]
-        })
+        (1..self.big_n).all(|j| self.data[j - 1] == self.data[2 * j - 1] + self.data[2 * j])
     }
 }
 
@@ -354,13 +376,13 @@ mod tests {
     use crate::poly::{CanonicalPoly, LagrangePoly, MlPoly};
     use ark_bn254::Fr;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     #[test]
-    fn canonical_paper_example_n3() {
-        let leaves = vec![
-            fr(1), fr(4), fr(3), fr(7), fr(2), fr(6), fr(5), fr(8)
-        ];
+    fn canonical_reference_example_n3() {
+        let leaves = vec![fr(1), fr(4), fr(3), fr(7), fr(2), fr(6), fr(5), fr(8)];
         let sc = CanonicalSumCircuit::from_leaves(&leaves);
         assert_eq!(sc.root(), fr(88));
         assert_eq!(sc.h(2), fr(25));
@@ -372,25 +394,23 @@ mod tests {
     }
 
     #[test]
-    fn canonical_recurrence_holds_paper_example() {
-        let leaves = vec![
-            fr(1), fr(4), fr(3), fr(7), fr(2), fr(6), fr(5), fr(8)
-        ];
+    fn canonical_recurrence_holds_reference_example() {
+        let leaves = vec![fr(1), fr(4), fr(3), fr(7), fr(2), fr(6), fr(5), fr(8)];
         let sc = CanonicalSumCircuit::from_leaves(&leaves);
         assert!(sc.verify_recurrence());
     }
 
     #[test]
     fn canonical_root_equals_hypercube_sum_n2() {
-        let f  = CanonicalPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]);
+        let f = CanonicalPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]);
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
     }
 
     #[test]
     fn canonical_root_equals_hypercube_sum_n3() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f  = CanonicalPoly::new(coeffs);
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
+        let f = CanonicalPoly::new(coeffs);
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
     }
@@ -398,21 +418,21 @@ mod tests {
     #[test]
     fn canonical_root_equals_hypercube_sum_n4() {
         let coeffs: Vec<Fr> = (0..16).map(|i| fr(i as u64 * 3 + 1)).collect();
-        let f  = CanonicalPoly::new(coeffs);
+        let f = CanonicalPoly::new(coeffs);
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
     }
 
     #[test]
     fn canonical_node_count() {
-        let f  = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.data.len(), 15);
     }
 
     #[test]
     fn canonical_layer_sizes() {
-        let f  = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.layer(0).len(), 1);
         assert_eq!(sc.layer(1).len(), 2);
@@ -422,7 +442,7 @@ mod tests {
 
     #[test]
     fn canonical_leaves_slice_length() {
-        let f  = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.leaves().len(), 8);
     }
@@ -430,14 +450,14 @@ mod tests {
     #[test]
     fn canonical_recurrence_holds_n4() {
         let coeffs: Vec<Fr> = (0..16).map(|i| fr(i as u64 + 1)).collect();
-        let f  = CanonicalPoly::new(coeffs);
+        let f = CanonicalPoly::new(coeffs);
         let sc = CanonicalSumCircuit::build(&f);
         assert!(sc.verify_recurrence());
     }
 
     #[test]
     fn canonical_n1_edge_case() {
-        let f  = CanonicalPoly::new(vec![fr(3), fr(7)]);
+        let f = CanonicalPoly::new(vec![fr(3), fr(7)]);
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.root(), fr(13));
         assert_eq!(sc.root(), f.hypercube_sum());
@@ -445,15 +465,15 @@ mod tests {
 
     #[test]
     fn lagrange_root_equals_hypercube_sum_n2() {
-        let f  = LagrangePoly::new(vec![fr(1), fr(3), fr(4), fr(10)]);
+        let f = LagrangePoly::new(vec![fr(1), fr(3), fr(4), fr(10)]);
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
     }
 
     #[test]
     fn lagrange_root_equals_hypercube_sum_n3() {
-        let evals: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f  = LagrangePoly::new(evals);
+        let evals: Vec<Fr> = (1..=8).map(fr).collect();
+        let f = LagrangePoly::new(evals);
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
     }
@@ -461,22 +481,22 @@ mod tests {
     #[test]
     fn lagrange_root_equals_hypercube_sum_n4() {
         let evals: Vec<Fr> = (0..16).map(|i| fr(i as u64 * 2 + 3)).collect();
-        let f  = LagrangePoly::new(evals);
+        let f = LagrangePoly::new(evals);
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
     }
 
     #[test]
     fn lagrange_recurrence_holds_n3() {
-        let evals: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f  = LagrangePoly::new(evals);
+        let evals: Vec<Fr> = (1..=8).map(fr).collect();
+        let f = LagrangePoly::new(evals);
         let sc = LagrangeSumCircuit::build(&f);
         assert!(sc.verify_recurrence());
     }
 
     #[test]
     fn lagrange_layer_sizes() {
-        let f  = LagrangePoly::new((0..8).map(|i| fr(i)).collect());
+        let f = LagrangePoly::new((0..8).map(fr).collect());
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.layer(0).len(), 1);
         assert_eq!(sc.layer(1).len(), 2);
@@ -486,7 +506,7 @@ mod tests {
 
     #[test]
     fn lagrange_n1_edge_case() {
-        let f  = LagrangePoly::new(vec![fr(5), fr(9)]);
+        let f = LagrangePoly::new(vec![fr(5), fr(9)]);
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.root(), fr(14));
     }
@@ -494,11 +514,11 @@ mod tests {
     #[test]
     fn canonical_and_lagrange_agree_on_root_n3() {
         use crate::circuit::LagrangeDecomp;
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let canon = CanonicalPoly::new(coeffs);
-        let lag   = LagrangeDecomp::build(&canon).to_lagrange();
+        let lag = LagrangeDecomp::build(&canon).to_lagrange();
         let sc_canon = CanonicalSumCircuit::build(&canon);
-        let sc_lag   = LagrangeSumCircuit::build(&lag);
+        let sc_lag = LagrangeSumCircuit::build(&lag);
         assert_eq!(sc_canon.root(), sc_lag.root());
         assert_eq!(sc_canon.root(), canon.hypercube_sum());
     }
@@ -508,34 +528,30 @@ mod tests {
         use crate::circuit::LagrangeDecomp;
         let coeffs: Vec<Fr> = (0..16).map(|i| fr(i as u64 * 3 + 1)).collect();
         let canon = CanonicalPoly::new(coeffs);
-        let lag   = LagrangeDecomp::build(&canon).to_lagrange();
+        let lag = LagrangeDecomp::build(&canon).to_lagrange();
         let sc_canon = CanonicalSumCircuit::build(&canon);
-        let sc_lag   = LagrangeSumCircuit::build(&lag);
+        let sc_lag = LagrangeSumCircuit::build(&lag);
         assert_eq!(sc_canon.root(), sc_lag.root());
     }
 
     #[test]
     fn canonical_from_leaves_matches_build() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f     = CanonicalPoly::new(coeffs);
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
+        let f = CanonicalPoly::new(coeffs);
         let table = get_or_build(3);
-        let manual_leaves: Vec<Fr> = (0..8)
-            .map(|k| f.coeffs()[table[k]])
-            .collect();
-        let sc_build       = CanonicalSumCircuit::build(&f);
+        let manual_leaves: Vec<Fr> = (0..8).map(|k| f.coeffs()[table[k]]).collect();
+        let sc_build = CanonicalSumCircuit::build(&f);
         let sc_from_leaves = CanonicalSumCircuit::from_leaves(&manual_leaves);
         assert_eq!(sc_build.data, sc_from_leaves.data);
     }
 
     #[test]
     fn lagrange_from_leaves_matches_build() {
-        let evals: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f     = LagrangePoly::new(evals);
+        let evals: Vec<Fr> = (1..=8).map(fr).collect();
+        let f = LagrangePoly::new(evals);
         let table = get_or_build(3);
-        let manual_leaves: Vec<Fr> = (0..8)
-            .map(|k| f.evals()[table[k]])
-            .collect();
-        let sc_build       = LagrangeSumCircuit::build(&f);
+        let manual_leaves: Vec<Fr> = (0..8).map(|k| f.evals()[table[k]]).collect();
+        let sc_build = LagrangeSumCircuit::build(&f);
         let sc_from_leaves = LagrangeSumCircuit::from_leaves(&manual_leaves);
         assert_eq!(sc_build.data, sc_from_leaves.data);
     }

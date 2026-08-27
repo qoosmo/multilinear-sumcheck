@@ -8,7 +8,7 @@
 //!    the challenges received so far, and return a [`RoundPoly`].
 //! 3. Assemble the full [`SumcheckProof`] transcript.
 //!
-//! # Round polynomial algorithm (canonical basis, §5.4)
+//! # Round polynomial algorithm (canonical basis)
 //!
 //! At round `j` with challenges `r_1, …, r_{j-1}` already received:
 //!
@@ -20,7 +20,7 @@
 //!    ```
 //! 3. Return `s_j(X_j) = h[0] + h[1] · X_j`.
 //!
-//! # Round polynomial algorithm (Lagrange basis, §5.5)
+//! # Round polynomial algorithm (Lagrange basis)
 //!
 //! Same fold rule but with the optimized formula:
 //! ```text
@@ -30,13 +30,12 @@
 //! Returns `s_j` via `from_evaluations(h[0], h[1])` since in the Lagrange
 //! basis `s_j(X) = h[0]·(1−X) + h[1]·X`.
 //!
-//! # Complexity (from the paper, Table 1)
+//! # Complexity
 //!
-//! | Algorithm           | Multiplications | Additions |
-//! |---------------------|----------------|-----------|
-//! | LinearTimeSC        | `2N`            | `3N`      |
-//! | **CanonicalProver** | **`2N`**        | **`2N`**  |
-//! | **LagrangeProver**  | **`2N`**        | **`4N`**  |
+//! Prover construction is linear in the evaluation-table size `N = 2^n`.
+//! Round extraction folds stored tree layers rather than re-evaluating the
+//! original multilinear polynomial. Basis-dependent arithmetic costs and
+//! runtime measurements are documented separately in the repository.
 
 use ark_ff::Field;
 
@@ -56,7 +55,9 @@ pub struct CanonicalProver<F: Field> {
 impl<F: Field> CanonicalProver<F> {
     /// Build the prover from a canonical polynomial. Cost: `O(N)`.
     pub fn new(f: &CanonicalPoly<F>) -> Self {
-        Self { circuit: CanonicalSumCircuit::build(f) }
+        Self {
+            circuit: CanonicalSumCircuit::build(f),
+        }
     }
 
     /// The claimed sum `H(f)` — the first value sent to the verifier.
@@ -83,17 +84,17 @@ impl<F: Field> CanonicalProver<F> {
 
         // Read layer j: 1-based indices [2^j, 2^{j+1} − 1].
         let layer_start = 1usize << j;
-        let layer_size  = 1usize << j;
+        let layer_size = 1usize << j;
         let mut h: Vec<F> = (0..layer_size)
             .map(|t| self.circuit.h(layer_start + t))
             .collect();
 
         // Fold with r_{j-1}, r_{j-2}, …, r_1 (most recent first).
-        // Paper §5.4 fold rule:
+        // Canonical fold rule:
         //   h'[k] = h[2k]   + r · h[2k+2]   for k even
         //   h'[k] = h[2k-1] + r · h[2k+1]   for k odd
         for ki in (0..challenges.len()).rev() {
-            let r    = challenges[ki];
+            let r = challenges[ki];
             let half = h.len() / 2;
             let mut h_new = Vec::with_capacity(half);
             for k in 0..half {
@@ -118,8 +119,10 @@ impl<F: Field> CanonicalProver<F> {
     pub fn prove(&self, challenges: &[F]) -> SumcheckProof<F> {
         let n = self.circuit.num_vars();
         assert_eq!(
-            challenges.len(), n,
-            "expected {n} challenges, got {}", challenges.len()
+            challenges.len(),
+            n,
+            "expected {n} challenges, got {}",
+            challenges.len()
         );
         let claimed_sum = self.claimed_sum();
         let round_polys = (1..=n)
@@ -141,7 +144,9 @@ pub struct LagrangeProver<F: Field> {
 impl<F: Field> LagrangeProver<F> {
     /// Build the prover from a Lagrange polynomial. Cost: `O(N)`.
     pub fn new(f: &LagrangePoly<F>) -> Self {
-        Self { circuit: LagrangeSumCircuit::build(f) }
+        Self {
+            circuit: LagrangeSumCircuit::build(f),
+        }
     }
 
     /// The claimed sum `H(f)`.
@@ -172,7 +177,7 @@ impl<F: Field> LagrangeProver<F> {
         debug_assert!(j <= self.circuit.num_vars());
 
         let layer_start = 1usize << j;
-        let layer_size  = 1usize << j;
+        let layer_size = 1usize << j;
         let mut h: Vec<F> = (0..layer_size)
             .map(|t| self.circuit.h(layer_start + t))
             .collect();
@@ -182,7 +187,7 @@ impl<F: Field> LagrangeProver<F> {
         //   h'[k] = h[2k]   + r · (h[2k+2] − h[2k])    for k even
         //   h'[k] = h[2k-1] + r · (h[2k+1] − h[2k-1])  for k odd
         for ki in (0..challenges.len()).rev() {
-            let r    = challenges[ki];
+            let r = challenges[ki];
             let half = h.len() / 2;
             let mut h_new = Vec::with_capacity(half);
             for k in 0..half {
@@ -212,8 +217,10 @@ impl<F: Field> LagrangeProver<F> {
     pub fn prove(&self, challenges: &[F]) -> SumcheckProof<F> {
         let n = self.circuit.num_vars();
         assert_eq!(
-            challenges.len(), n,
-            "expected {n} challenges, got {}", challenges.len()
+            challenges.len(),
+            n,
+            "expected {n} challenges, got {}",
+            challenges.len()
         );
         let claimed_sum = self.claimed_sum();
         let round_polys = (1..=n)
@@ -235,7 +242,9 @@ mod tests {
     use ark_bn254::Fr;
     use ark_ff::Zero;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     fn canon(coeffs: &[u64]) -> CanonicalPoly<Fr> {
         CanonicalPoly::new(coeffs.iter().map(|&v| fr(v)).collect())
@@ -270,7 +279,7 @@ mod tests {
     #[test]
     fn canonical_round_1_is_h2_h3() {
         let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
-        let p  = CanonicalProver::new(&f);
+        let p = CanonicalProver::new(&f);
         let sc = CanonicalSumCircuit::build(&f);
         let s1 = p.compute_round_poly(&[]);
         assert_eq!(s1.a, sc.h(2));
@@ -281,7 +290,10 @@ mod tests {
     fn canonical_round_1_sums_to_claimed() {
         let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
         let p = CanonicalProver::new(&f);
-        assert_eq!(p.compute_round_poly(&[]).sum_over_boolean(), p.claimed_sum());
+        assert_eq!(
+            p.compute_round_poly(&[]).sum_over_boolean(),
+            p.claimed_sum()
+        );
     }
 
     #[test]
@@ -306,21 +318,21 @@ mod tests {
 
     #[test]
     fn canonical_round_consistency_n4() {
-        let f  = canon(&(1u64..=16).collect::<Vec<_>>());
-        let p  = CanonicalProver::new(&f);
+        let f = canon(&(1u64..=16).collect::<Vec<_>>());
+        let p = CanonicalProver::new(&f);
         let ch = [fr(2), fr(5), fr(11), fr(7)];
         let mut prev = p.claimed_sum();
         for j in 1..=4 {
-            let sj = p.compute_round_poly(&ch[..j-1]);
+            let sj = p.compute_round_poly(&ch[..j - 1]);
             assert_eq!(sj.sum_over_boolean(), prev, "round {j}");
-            prev = sj.eval(ch[j-1]);
+            prev = sj.eval(ch[j - 1]);
         }
     }
 
     #[test]
     fn canonical_prove_n3() {
-        let f  = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
-        let p  = CanonicalProver::new(&f);
+        let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+        let p = CanonicalProver::new(&f);
         let ch = [fr(3), fr(7), fr(11)];
         let proof = p.prove(&ch);
         assert_eq!(proof.num_vars(), 3);
@@ -328,7 +340,7 @@ mod tests {
         for j in 1..=3 {
             let sj = proof.round_poly(j);
             assert_eq!(sj.sum_over_boolean(), prev, "round {j}");
-            prev = sj.eval(ch[j-1]);
+            prev = sj.eval(ch[j - 1]);
         }
     }
 
@@ -347,7 +359,10 @@ mod tests {
 
     #[test]
     fn canonical_zero_poly_claimed_sum_is_zero() {
-        assert_eq!(CanonicalProver::new(&CanonicalPoly::<Fr>::zero(3)).claimed_sum(), Fr::zero());
+        assert_eq!(
+            CanonicalProver::new(&CanonicalPoly::<Fr>::zero(3)).claimed_sum(),
+            Fr::zero()
+        );
     }
 
     // ── LagrangeProver ────────────────────────────────────────────────────────
@@ -371,40 +386,43 @@ mod tests {
     fn lagrange_round_1_sums_to_claimed() {
         let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
         let p = LagrangeProver::new(&f);
-        assert_eq!(p.compute_round_poly(&[]).sum_over_boolean(), p.claimed_sum());
+        assert_eq!(
+            p.compute_round_poly(&[]).sum_over_boolean(),
+            p.claimed_sum()
+        );
     }
 
     #[test]
     fn lagrange_round_consistency_n3() {
-        let f  = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
-        let p  = LagrangeProver::new(&f);
+        let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
+        let p = LagrangeProver::new(&f);
         let ch = [fr(3), fr(7), fr(11)];
         let mut prev = p.claimed_sum();
         for j in 1..=3 {
-            let sj = p.compute_round_poly(&ch[..j-1]);
+            let sj = p.compute_round_poly(&ch[..j - 1]);
             assert_eq!(sj.sum_over_boolean(), prev, "round {j}");
-            prev = sj.eval(ch[j-1]);
+            prev = sj.eval(ch[j - 1]);
         }
     }
 
     #[test]
     fn lagrange_round_consistency_n4() {
         let evals: Vec<u64> = (0..16).map(|i| i * 2 + 1).collect();
-        let f  = lagrange(&evals);
-        let p  = LagrangeProver::new(&f);
+        let f = lagrange(&evals);
+        let p = LagrangeProver::new(&f);
         let ch = [fr(2), fr(5), fr(11), fr(7)];
         let mut prev = p.claimed_sum();
         for j in 1..=4 {
-            let sj = p.compute_round_poly(&ch[..j-1]);
+            let sj = p.compute_round_poly(&ch[..j - 1]);
             assert_eq!(sj.sum_over_boolean(), prev, "round {j}");
-            prev = sj.eval(ch[j-1]);
+            prev = sj.eval(ch[j - 1]);
         }
     }
 
     #[test]
     fn lagrange_prove_n3() {
-        let f  = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
-        let p  = LagrangeProver::new(&f);
+        let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
+        let p = LagrangeProver::new(&f);
         let ch = [fr(3), fr(7), fr(11)];
         let proof = p.prove(&ch);
         assert_eq!(proof.num_vars(), 3);
@@ -412,20 +430,23 @@ mod tests {
         for j in 1..=3 {
             let sj = proof.round_poly(j);
             assert_eq!(sj.sum_over_boolean(), prev, "round {j}");
-            prev = sj.eval(ch[j-1]);
+            prev = sj.eval(ch[j - 1]);
         }
     }
 
     #[test]
     fn lagrange_zero_poly_claimed_sum_is_zero() {
-        assert_eq!(LagrangeProver::new(&LagrangePoly::<Fr>::zero(3)).claimed_sum(), Fr::zero());
+        assert_eq!(
+            LagrangeProver::new(&LagrangePoly::<Fr>::zero(3)).claimed_sum(),
+            Fr::zero()
+        );
     }
 
     // ── Canonical and Lagrange agree ──────────────────────────────────────────
 
     #[test]
     fn canonical_and_lagrange_agree_n3() {
-        let canon_f    = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+        let canon_f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
         let lagrange_f = LagrangeDecomp::build(&canon_f).to_lagrange();
         let cp = CanonicalProver::new(&canon_f);
         let lp = LagrangeProver::new(&lagrange_f);
@@ -433,8 +454,8 @@ mod tests {
         let ch = [fr(3), fr(7), fr(11)];
         for j in 1..=3 {
             assert_eq!(
-                cp.compute_round_poly(&ch[..j-1]),
-                lp.compute_round_poly(&ch[..j-1]),
+                cp.compute_round_poly(&ch[..j - 1]),
+                lp.compute_round_poly(&ch[..j - 1]),
                 "round {j}"
             );
         }
@@ -442,7 +463,7 @@ mod tests {
 
     #[test]
     fn canonical_and_lagrange_agree_n4() {
-        let canon_f    = canon(&(1u64..=16).collect::<Vec<_>>());
+        let canon_f = canon(&(1u64..=16).collect::<Vec<_>>());
         let lagrange_f = LagrangeDecomp::build(&canon_f).to_lagrange();
         let cp = CanonicalProver::new(&canon_f);
         let lp = LagrangeProver::new(&lagrange_f);
@@ -450,8 +471,8 @@ mod tests {
         let ch = [fr(2), fr(5), fr(11), fr(7)];
         for j in 1..=4 {
             assert_eq!(
-                cp.compute_round_poly(&ch[..j-1]),
-                lp.compute_round_poly(&ch[..j-1]),
+                cp.compute_round_poly(&ch[..j - 1]),
+                lp.compute_round_poly(&ch[..j - 1]),
                 "round {j}"
             );
         }

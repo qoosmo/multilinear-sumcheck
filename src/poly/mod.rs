@@ -19,7 +19,3 @@ pub use canonical::{CanonicalPoly, CanonicalTerm};
 pub use lagrange::LagrangePoly;
 pub use traits::MlPoly;
 pub use uni::{UniDecomp, UniPoly, UniTerm};
-
-
-
-

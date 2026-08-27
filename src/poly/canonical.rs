@@ -102,8 +102,11 @@ impl<F: Field> CanonicalPoly<F> {
     /// Panics if `r.len() != num_vars`.
     pub fn eval_naive(&self, r: &[F]) -> F {
         assert_eq!(
-            r.len(), self.num_vars,
-            "eval_naive: expected {} variables, got {}", self.num_vars, r.len()
+            r.len(),
+            self.num_vars,
+            "eval_naive: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
         );
 
         self.coeffs
@@ -127,8 +130,7 @@ impl<F: Field> CanonicalPoly<F> {
 
     /// Circuit-based evaluation at `r = (r₁, …, rₙ)`.
     ///
-    /// Implements the bottom-up traversal of the `(q_j)` tree from §3.3
-    /// of the paper.
+    /// Implements a bottom-up traversal of the `(q_j)` decomposition tree.
     ///
     /// # Algorithm
     ///
@@ -148,28 +150,30 @@ impl<F: Field> CanonicalPoly<F> {
     /// # Panics
     /// Panics if `r.len() != num_vars`.
     pub fn eval_circuit(&self, r: &[F]) -> F {
-    assert_eq!(
-        r.len(), self.num_vars,
-        "eval_circuit: expected {} variables, got {}", self.num_vars, r.len()
-    );
+        assert_eq!(
+            r.len(),
+            self.num_vars,
+            "eval_circuit: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
+        );
 
-    // Working buffer: starts as a copy of the coefficient vector.
-    // We fold variable x₁ first (r[0]), then x₂ (r[1]), …, xₙ (r[n-1]).
-    // This matches the split rule: q₂ holds even-indexed coefficients
-    // (j₁ = 0) and q₃ holds odd-indexed coefficients (j₁ = 1).
-    let mut buf = self.coeffs.clone();
+        // Working buffer: starts as a copy of the coefficient vector.
+        // We fold variable x₁ first (r[0]), then x₂ (r[1]), …, xₙ (r[n-1]).
+        // This matches the split rule: q₂ holds even-indexed coefficients
+        // (j₁ = 0) and q₃ holds odd-indexed coefficients (j₁ = 1).
+        let mut buf = self.coeffs.clone();
 
-    for k in 0..self.num_vars {
-        let r_k  = r[k];
-        let half = buf.len() / 2;
-        for t in 0..half {
-            buf[t] = buf[2 * t] + r_k * buf[2 * t + 1];
+        for &r_k in r.iter().take(self.num_vars) {
+            let half = buf.len() / 2;
+            for t in 0..half {
+                buf[t] = buf[2 * t] + r_k * buf[2 * t + 1];
+            }
+            buf.truncate(half);
         }
-        buf.truncate(half);
-    }
 
-    buf[0]
-}
+        buf[0]
+    }
 }
 
 // ── MlPoly implementation ─────────────────────────────────────────────────────
@@ -188,7 +192,7 @@ impl<F: Field> MlPoly<F> for CanonicalPoly<F> {
                 if alpha.is_zero() {
                     acc
                 } else {
-                    let deg    = j.count_ones() as usize;
+                    let deg = j.count_ones() as usize;
                     let weight = F::from(1u64 << (n - deg));
                     acc + alpha * weight
                 }
@@ -207,7 +211,9 @@ mod tests {
     use ark_ff::One;
     use ark_ff::Zero;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── CanonicalTerm ─────────────────────────────────────────────────────────
 
@@ -388,7 +394,7 @@ mod tests {
     #[test]
     fn naive_and_circuit_agree_at_boolean_points_n3() {
         // f = α₀ + α₁x₁ + … + α₇x₁x₂x₃
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs);
         for b0 in [fr(0), fr(1)] {
             for b1 in [fr(0), fr(1)] {
@@ -397,7 +403,8 @@ mod tests {
                     assert_eq!(
                         f.eval_naive(&r),
                         f.eval_circuit(&r),
-                        "disagreement at r={:?}", r
+                        "disagreement at r={:?}",
+                        r
                     );
                 }
             }
@@ -406,7 +413,7 @@ mod tests {
 
     #[test]
     fn naive_and_circuit_agree_at_random_point_n3() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs);
         // Use a fixed non-boolean point to test the general case.
         let r = [fr(2), fr(5), fr(11)];
@@ -423,10 +430,9 @@ mod tests {
 
     // ── eval_circuit buffer size after each fold ──────────────────────────────
 
-    /// The circuit evaluation must return the same value whether we fold
-    /// variables in forward or reverse order — but our implementation
-    /// always folds x_n first (right-to-left), matching the paper's
-    /// canonical order x₁ → x₂ → … → xₙ for the decomposition tree.
+    /// The circuit evaluator folds challenges in variable order
+    /// `x₁, x₂, …, xₙ`, matching the even/odd coefficient decomposition used
+    /// by the canonical tree.
     #[test]
     fn eval_circuit_zero_poly_is_zero() {
         let f = CanonicalPoly::<Fr>::zero(4);

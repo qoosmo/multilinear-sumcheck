@@ -1,17 +1,18 @@
 [package]
-name        = "mlp_pro"
+name        = "multilinear-sumcheck"
 version     = "0.1.0"
 edition     = "2021"
 authors     = ["Ali Mkhida <ali@algorizk.com>", "Adil Iguider <adil@inpt.ac.ma>"]
-description = "Multilinear polynomials via tree-based circuit and the Sumcheck protocol"
+description = "Basis-aware multilinear polynomial algorithms and the Sumcheck protocol in Rust"
 license     = "MIT OR Apache-2.0"
-repository  = "https://github.com/algorizk/mlp-pro"
+repository  = "https://github.com/qoosmo/multilinear-sumcheck"
+homepage    = "https://github.com/qoosmo/multilinear-sumcheck"
+readme      = "README.md"
 keywords    = ["cryptography", "sumcheck", "multilinear", "zkp", "zero-knowledge"]
 categories  = ["cryptography", "mathematics"]
-readme      = "README.md"
 
 [lib]
-name = "mlp_pro"
+name = "multilinear_sumcheck"
 path = "src/lib.rs"
 
 [[bench]]

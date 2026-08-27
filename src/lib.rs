@@ -1,7 +1,16 @@
-//! mlp_pro — Multilinear polynomials via tree-based circuit and the Sumcheck protocol.
+//! Basis-aware multilinear polynomial algorithms and the Sumcheck protocol.
 //!
-//! Built step by step. Each module is activated when its step is complete.
+//! The crate provides canonical (coefficient) and Lagrange (Boolean-hypercube
+//! evaluation) representations, tree/circuit decompositions, linear-time
+//! evaluation kernels, basis-specific Sumcheck provers, and a stateless
+//! verifier.
+//!
+//! This is a research implementation. It is not a complete SNARK/STARK and
+//! does not currently include Fiat-Shamir, a polynomial commitment scheme, or
+//! zero-knowledge masking.
 
-pub mod poly;
+#![forbid(unsafe_code)]
+
 pub mod circuit;
+pub mod poly;
 pub mod sumcheck;

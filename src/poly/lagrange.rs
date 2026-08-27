@@ -73,16 +73,18 @@ impl<F: Field> LagrangePoly<F> {
     /// Panics if `r.len() != num_vars`.
     pub fn eval_standard(&self, r: &[F]) -> F {
         assert_eq!(
-            r.len(), self.num_vars,
-            "eval_standard: expected {} variables, got {}", self.num_vars, r.len()
+            r.len(),
+            self.num_vars,
+            "eval_standard: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
         );
 
         let mut buf = self.evals.clone();
 
-        for k in 0..self.num_vars {
-            let r_k         = r[k];
+        for &r_k in r.iter().take(self.num_vars) {
             let one_minus_r = F::one() - r_k;
-            let half        = buf.len() / 2;
+            let half = buf.len() / 2;
             for t in 0..half {
                 buf[t] = one_minus_r * buf[2 * t] + r_k * buf[2 * t + 1];
             }
@@ -98,20 +100,24 @@ impl<F: Field> LagrangePoly<F> {
     /// Cost per pair: 1 multiplication, 2 additions.
     ///
     /// Saves one multiplication per pair vs `eval_standard`.
-    /// Paper reports ~25–35% improvement over `eval_standard`.
+    ///
+    /// Runtime impact is hardware- and field-dependent; use the Criterion
+    /// benchmark suite to compare the kernels on the target machine.
     ///
     /// # Panics
     /// Panics if `r.len() != num_vars`.
     pub fn eval_optimized(&self, r: &[F]) -> F {
         assert_eq!(
-            r.len(), self.num_vars,
-            "eval_optimized: expected {} variables, got {}", self.num_vars, r.len()
+            r.len(),
+            self.num_vars,
+            "eval_optimized: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
         );
 
         let mut buf = self.evals.clone();
 
-        for k in 0..self.num_vars {
-            let r_k  = r[k];
+        for &r_k in r.iter().take(self.num_vars) {
             let half = buf.len() / 2;
             for t in 0..half {
                 buf[t] = buf[2 * t] + r_k * (buf[2 * t + 1] - buf[2 * t]);
@@ -135,37 +141,39 @@ impl<F: Field> LagrangePoly<F> {
     ///
     /// # When this is faster
     ///
-    /// The parallel version is faster than `eval_optimized` only when
-    /// the per-layer work is large enough to amortise thread synchronisation.
-    /// In practice this means `n ≥ 18` on most machines.
-    /// At `n < 16` the sequential version is typically faster.
+    /// The parallel version can outperform `eval_optimized` only when
+    /// the per-layer work is large enough to amortise thread scheduling and
+    /// synchronisation. The crossover point is machine- and field-dependent;
+    /// benchmark both kernels on the target workload.
     ///
     /// # Panics
     /// Panics if `r.len() != num_vars`.
-pub fn eval_parallel(&self, r: &[F]) -> F
-where
-    F: Send + Sync,
-{
-    assert_eq!(
-        r.len(), self.num_vars,
-        "eval_parallel: expected {} variables, got {}", self.num_vars, r.len()
-    );
+    pub fn eval_parallel(&self, r: &[F]) -> F
+    where
+        F: Send + Sync,
+    {
+        assert_eq!(
+            r.len(),
+            self.num_vars,
+            "eval_parallel: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
+        );
 
-    let mut buf = self.evals.clone();
-    // Pre-allocate a reusable buffer — avoids one allocation per layer.
-    let mut tmp = Vec::with_capacity(buf.len());
+        let mut buf = self.evals.clone();
+        // Pre-allocate a reusable buffer — avoids one allocation per layer.
+        let mut tmp = Vec::with_capacity(buf.len());
 
-    for k in 0..self.num_vars {
-        let r_k = r[k];
-        tmp.clear();
-        buf.par_chunks(2)
-            .map(|pair| pair[0] + r_k * (pair[1] - pair[0]))
-            .collect_into_vec(&mut tmp);
-        std::mem::swap(&mut buf, &mut tmp);
+        for &r_k in r.iter().take(self.num_vars) {
+            tmp.clear();
+            buf.par_chunks(2)
+                .map(|pair| pair[0] + r_k * (pair[1] - pair[0]))
+                .collect_into_vec(&mut tmp);
+            std::mem::swap(&mut buf, &mut tmp);
+        }
+
+        buf[0]
     }
-
-    buf[0]
-}
 }
 
 // ── MlPoly implementation ─────────────────────────────────────────────────────
@@ -191,7 +199,9 @@ mod tests {
     use ark_bn254::Fr;
     use ark_ff::Zero;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── Construction ─────────────────────────────────────────────────────────
 
@@ -338,7 +348,7 @@ mod tests {
 
     #[test]
     fn all_three_agree_at_boolean_points_n3() {
-        let p = LagrangePoly::new((1..=8).map(|i| fr(i)).collect());
+        let p = LagrangePoly::new((1..=8).map(fr).collect());
         for b0 in [fr(0), fr(1)] {
             for b1 in [fr(0), fr(1)] {
                 for b2 in [fr(0), fr(1)] {
@@ -346,7 +356,7 @@ mod tests {
                     let s = p.eval_standard(&r);
                     let o = p.eval_optimized(&r);
                     let par = p.eval_parallel(&r);
-                    assert_eq!(s, o,   "standard vs optimized at {:?}", r);
+                    assert_eq!(s, o, "standard vs optimized at {:?}", r);
                     assert_eq!(o, par, "optimized vs parallel at {:?}", r);
                 }
             }
@@ -357,8 +367,8 @@ mod tests {
     fn all_three_agree_at_random_point_n4() {
         let p = LagrangePoly::new((0..16).map(|i| fr(i as u64 * 3 + 1)).collect());
         let r = [fr(2), fr(5), fr(11), fr(7)];
-        let s   = p.eval_standard(&r);
-        let o   = p.eval_optimized(&r);
+        let s = p.eval_standard(&r);
+        let o = p.eval_optimized(&r);
         let par = p.eval_parallel(&r);
         assert_eq!(s, o);
         assert_eq!(o, par);
@@ -368,12 +378,12 @@ mod tests {
     fn lagrange_eval_agrees_with_canonical_eval_circuit_n3() {
         use crate::circuit::LagrangeDecomp;
         use crate::poly::CanonicalPoly;
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let canon = CanonicalPoly::new(coeffs);
-        let lag   = LagrangeDecomp::build(&canon).to_lagrange();
-        let r     = [fr(3), fr(7), fr(13)];
+        let lag = LagrangeDecomp::build(&canon).to_lagrange();
+        let r = [fr(3), fr(7), fr(13)];
         assert_eq!(lag.eval_optimized(&r), canon.eval_circuit(&r));
-        assert_eq!(lag.eval_parallel(&r),  canon.eval_circuit(&r));
+        assert_eq!(lag.eval_parallel(&r), canon.eval_circuit(&r));
     }
 
     #[test]
@@ -382,9 +392,9 @@ mod tests {
         use crate::poly::CanonicalPoly;
         let coeffs: Vec<Fr> = (0..16).map(|i| fr(i as u64 * 3 + 1)).collect();
         let canon = CanonicalPoly::new(coeffs);
-        let lag   = LagrangeDecomp::build(&canon).to_lagrange();
-        let r     = [fr(2), fr(5), fr(11), fr(7)];
+        let lag = LagrangeDecomp::build(&canon).to_lagrange();
+        let r = [fr(2), fr(5), fr(11), fr(7)];
         assert_eq!(lag.eval_optimized(&r), canon.eval_circuit(&r));
-        assert_eq!(lag.eval_parallel(&r),  canon.eval_circuit(&r));
+        assert_eq!(lag.eval_parallel(&r), canon.eval_circuit(&r));
     }
 }
