@@ -8,7 +8,7 @@
 //!    the challenges received so far, and return a [`RoundPoly`].
 //! 3. Assemble the full [`SumcheckProof`] transcript.
 //!
-//! # Round polynomial algorithm (canonical basis, §5.4)
+//! # Round polynomial algorithm (canonical basis)
 //!
 //! At round `j` with challenges `r_1, …, r_{j-1}` already received:
 //!
@@ -20,7 +20,7 @@
 //!    ```
 //! 3. Return `s_j(X_j) = h[0] + h[1] · X_j`.
 //!
-//! # Round polynomial algorithm (Lagrange basis, §5.5)
+//! # Round polynomial algorithm (Lagrange basis)
 //!
 //! Same fold rule but with the optimized formula:
 //! ```text
@@ -30,13 +30,12 @@
 //! Returns `s_j` via `from_evaluations(h[0], h[1])` since in the Lagrange
 //! basis `s_j(X) = h[0]·(1−X) + h[1]·X`.
 //!
-//! # Complexity (from the paper, Table 1)
+//! # Complexity
 //!
-//! | Algorithm           | Multiplications | Additions |
-//! |---------------------|----------------|-----------|
-//! | LinearTimeSC        | `2N`            | `3N`      |
-//! | **CanonicalProver** | **`2N`**        | **`2N`**  |
-//! | **LagrangeProver**  | **`2N`**        | **`4N`**  |
+//! Prover construction is linear in the evaluation-table size `N = 2^n`.
+//! Round extraction folds stored tree layers rather than re-evaluating the
+//! original multilinear polynomial. Basis-dependent arithmetic costs and
+//! runtime measurements are documented separately in the repository.
 
 use ark_ff::Field;
 
@@ -91,7 +90,7 @@ impl<F: Field> CanonicalProver<F> {
             .collect();
 
         // Fold with r_{j-1}, r_{j-2}, …, r_1 (most recent first).
-        // Paper §5.4 fold rule:
+        // Canonical fold rule:
         //   h'[k] = h[2k]   + r · h[2k+2]   for k even
         //   h'[k] = h[2k-1] + r · h[2k+1]   for k odd
         for ki in (0..challenges.len()).rev() {

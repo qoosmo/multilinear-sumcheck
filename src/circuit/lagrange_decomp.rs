@@ -24,7 +24,8 @@ use crate::poly::{CanonicalPoly, LagrangePoly, MlPoly};
 ///
 /// # Cost
 ///
-/// Exactly `n · 2^{n-1}` field additions — proved in §A of the paper.
+/// Exactly `n · 2^{n-1}` field additions. The implementation records
+/// this count and the test suite checks it for multiple dimensions.
 pub struct LagrangeDecomp<F: Field> {
     /// Number of variables `n`.
     pub n: usize,
@@ -33,7 +34,7 @@ pub struct LagrangeDecomp<F: Field> {
     pub big_n: usize,
 
     /// The sequence `(p_j)_{1 ≤ j ≤ 2N-1}`, stored 0-based.
-    /// Paper index `j` → `nodes[j - 1]`.
+    /// 1-based tree index `j` → `nodes[j - 1]`.
     pub nodes: Vec<CanonicalPoly<F>>,
 
     /// Cached bit-reverse permutation table of length `N`.
@@ -59,7 +60,7 @@ impl<F: Field> LagrangeDecomp<F> {
         // p_1 = f  (root)
         nodes[0] = Some(f.clone());
 
-        // Layer i = 1, …, n  (1-based to match the paper)
+        // Layer i = 1, …, n in the 1-based tree notation.
         // At layer i, nodes are at 1-based indices [2^{i-1}, 2^i - 1].
         for i in 1..=n {
             let layer_start = 1usize << (i - 1); // 2^{i-1}  (1-based)

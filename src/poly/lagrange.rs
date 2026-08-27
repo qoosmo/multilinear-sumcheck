@@ -100,7 +100,9 @@ impl<F: Field> LagrangePoly<F> {
     /// Cost per pair: 1 multiplication, 2 additions.
     ///
     /// Saves one multiplication per pair vs `eval_standard`.
-    /// Paper reports ~25–35% improvement over `eval_standard`.
+    ///
+    /// Runtime impact is hardware- and field-dependent; use the Criterion
+    /// benchmark suite to compare the kernels on the target machine.
     ///
     /// # Panics
     /// Panics if `r.len() != num_vars`.
@@ -139,10 +141,10 @@ impl<F: Field> LagrangePoly<F> {
     ///
     /// # When this is faster
     ///
-    /// The parallel version is faster than `eval_optimized` only when
-    /// the per-layer work is large enough to amortise thread synchronisation.
-    /// In practice this means `n ≥ 18` on most machines.
-    /// At `n < 16` the sequential version is typically faster.
+    /// The parallel version can outperform `eval_optimized` only when
+    /// the per-layer work is large enough to amortise thread scheduling and
+    /// synchronisation. The crossover point is machine- and field-dependent;
+    /// benchmark both kernels on the target workload.
     ///
     /// # Panics
     /// Panics if `r.len() != num_vars`.

@@ -23,10 +23,10 @@
 //! The verifier checks `s_j(0) + s_j(1) = s_{j-1}(r_{j-1})` and then
 //! samples a fresh challenge `r_j`.
 //!
-//! From the paper (§5):
+//! In the tree notation used by this crate:
 //! - **Canonical basis:** `s_j(X_j) = h_2' + h_3' · X_j`
-//! - **Lagrange basis:**  `s_j(X_j) = h_2' + h_3' · X_j`  (same form,
-//!   different recurrence for `h_2'` and `h_3'`)
+//! - **Lagrange basis:**  the same affine form is reconstructed from
+//!   `s_j(0)` and `s_j(1)`, using the Lagrange recurrence.
 //!
 //! In both cases the round polynomial is degree-1 and is fully described
 //! by two field elements.
@@ -42,12 +42,12 @@ use std::fmt;
 ///
 /// This is the message the prover sends in each round of the Sumcheck
 /// protocol.  Since `f` is multilinear (degree at most 1 in each
-/// variable), every round polynomial has degree exactly 1.
+/// variable), every round polynomial has degree at most 1.
 ///
-/// # Paper notation
+/// # Tree notation
 ///
-/// The paper writes `s_j(X_j) = h_2' + h_3' · X_j`.
-/// Here `a = h_2'` and `b = h_3'`.
+/// In the canonical tree representation,
+/// `s_j(X_j) = h_2' + h_3' · X_j`, so `a = h_2'` and `b = h_3'`.
 ///
 /// # Encoding
 ///

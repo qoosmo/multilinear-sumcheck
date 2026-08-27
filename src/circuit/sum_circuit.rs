@@ -16,8 +16,8 @@
 //!
 //! # Indexing convention
 //!
-//! 1-based throughout, matching the paper exactly.
-//! Internal storage is 0-based: paper index `j` → `data[j-1]`.
+//! The mathematical tree notation is 1-based.
+//! Internal storage is 0-based: tree index `j` → `data[j-1]`.
 //!
 //! ```text
 //! layer 0 :  j = 1                    (root  = H(f))
@@ -58,7 +58,7 @@ pub trait SumCircuit<F: Field> {
         1 << self.num_vars()
     }
 
-    /// Get `h_j` using the **1-based paper index**.
+    /// Get `h_j` using the **1-based tree index**.
     ///
     /// # Panics
     /// Panics if `j == 0` or `j > 2N − 1`.
