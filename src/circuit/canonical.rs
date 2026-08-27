@@ -186,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn split_matches_paper_example_n3() {
+    fn split_matches_reference_example_n3() {
         let coeffs = vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)];
         let f = CanonicalPoly::new(coeffs);
         let d = CanonicalDecomp::build(&f);

@@ -130,8 +130,7 @@ impl<F: Field> CanonicalPoly<F> {
 
     /// Circuit-based evaluation at `r = (r₁, …, rₙ)`.
     ///
-    /// Implements the bottom-up traversal of the `(q_j)` tree from §3.3
-    /// of the paper.
+    /// Implements a bottom-up traversal of the `(q_j)` decomposition tree.
     ///
     /// # Algorithm
     ///
@@ -431,10 +430,9 @@ mod tests {
 
     // ── eval_circuit buffer size after each fold ──────────────────────────────
 
-    /// The circuit evaluation must return the same value whether we fold
-    /// variables in forward or reverse order — but our implementation
-    /// always folds x_n first (right-to-left), matching the paper's
-    /// canonical order x₁ → x₂ → … → xₙ for the decomposition tree.
+    /// The circuit evaluator folds challenges in variable order
+    /// `x₁, x₂, …, xₙ`, matching the even/odd coefficient decomposition used
+    /// by the canonical tree.
     #[test]
     fn eval_circuit_zero_poly_is_zero() {
         let f = CanonicalPoly::<Fr>::zero(4);

@@ -110,9 +110,9 @@ impl<F: Field> LagrangeDecomp<F> {
         }
     }
 
-    // ── Accessors (paper notation) ────────────────────────────────────────────
+    // ── Accessors (1-based tree notation) ────────────────────────────────────────────
 
-    /// Return a reference to `p_j` using the **1-based paper index**.
+    /// Return a reference to `p_j` using the **1-based tree index**.
     ///
     /// # Panics
     /// Panics if `j == 0` or `j > 2N - 1`.
@@ -141,7 +141,7 @@ impl<F: Field> LagrangeDecomp<F> {
         &self.nodes[self.big_n - 1..2 * self.big_n - 1]
     }
 
-    /// Layer `i` (1-based, matching the paper): slice of nodes at depth `i`.
+    /// Layer `i` (1-based tree convention): slice of nodes at depth `i`.
     ///
     /// - Layer `1` : `[p_1]`  (the root)
     /// - Layer `i` : `p_{2^{i-1}}, …, p_{2^i - 1}`
@@ -255,7 +255,7 @@ mod tests {
 
     // ── Gate rule: p_{2j} = a, p_{2j+1} = a + b ──────────────────────────────
 
-    /// Paper example: f = α₀ + α₁x₁ + α₂x₂ + α₄x₃ + α₃x₁x₂ + α₅x₁x₃ + α₆x₂x₃ + α₇x₁x₂x₃
+    /// Reference example: f = α₀ + α₁x₁ + α₂x₂ + α₄x₃ + α₃x₁x₂ + α₅x₁x₃ + α₆x₂x₃ + α₇x₁x₂x₃
     /// coeffs = [1, 2, 3, 4, 5, 6, 7, 8]
     ///
     /// p_1 = f = a + x₁·b  where:

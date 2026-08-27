@@ -381,7 +381,7 @@ mod tests {
     }
 
     #[test]
-    fn canonical_paper_example_n3() {
+    fn canonical_reference_example_n3() {
         let leaves = vec![fr(1), fr(4), fr(3), fr(7), fr(2), fr(6), fr(5), fr(8)];
         let sc = CanonicalSumCircuit::from_leaves(&leaves);
         assert_eq!(sc.root(), fr(88));
@@ -394,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn canonical_recurrence_holds_paper_example() {
+    fn canonical_recurrence_holds_reference_example() {
         let leaves = vec![fr(1), fr(4), fr(3), fr(7), fr(2), fr(6), fr(5), fr(8)];
         let sc = CanonicalSumCircuit::from_leaves(&leaves);
         assert!(sc.verify_recurrence());

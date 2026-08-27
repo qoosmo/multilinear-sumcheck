@@ -154,7 +154,7 @@ pub struct SumcheckProof<F: Field> {
 
     /// The `n` round polynomials `s_1, …, s_n`.
     ///
-    /// `round_polys[j-1]` = `s_j` (0-based storage, 1-based paper index).
+    /// `round_polys[j-1]` = `s_j` (0-based storage, 1-based round index).
     pub round_polys: Vec<RoundPoly<F>>,
 }
 
@@ -177,7 +177,7 @@ impl<F: Field> SumcheckProof<F> {
         1 + 2 * self.round_polys.len()
     }
 
-    /// The round polynomial `s_j` using the **1-based paper index**.
+    /// The round polynomial `s_j` using the **1-based round index**.
     ///
     /// # Panics
     /// Panics if `j == 0` or `j > n`.

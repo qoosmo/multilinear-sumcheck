@@ -399,12 +399,12 @@ pub struct UniDecomp<F: Field> {
     pub n: usize,
     /// `N = 2^n`.
     pub big_n: usize,
-    /// Flat storage. Paper index `j` (1-based) → `nodes[j-1]`.
+    /// Flat storage. Tree index `j` (1-based) → `nodes[j-1]`.
     pub nodes: Vec<Vec<F>>,
 }
 
 impl<F: Field> UniDecomp<F> {
-    /// `q_j` using the **1-based paper index**.
+    /// `q_j` using the **1-based tree index**.
     ///
     /// # Panics
     /// Panics if `j == 0` or `j > 2N - 1`.
@@ -839,7 +839,7 @@ mod tests {
     }
 
     #[test]
-    fn decompose_first_layer_paper_example_n3() {
+    fn decompose_first_layer_reference_example_n3() {
         let p = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)]);
         let d = p.decompose();
         assert_eq!(d.q(2), &[fr(1), fr(3), fr(5), fr(7)]);
@@ -847,7 +847,7 @@ mod tests {
     }
 
     #[test]
-    fn decompose_second_layer_paper_example_n3() {
+    fn decompose_second_layer_reference_example_n3() {
         let p = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)]);
         let d = p.decompose();
         assert_eq!(d.q(4), &[fr(1), fr(5)]);
@@ -857,7 +857,7 @@ mod tests {
     }
 
     #[test]
-    fn decompose_leaves_paper_example_n3() {
+    fn decompose_leaves_reference_example_n3() {
         let p = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)]);
         let d = p.decompose();
         assert_eq!(d.q(8), &[fr(1)]);
