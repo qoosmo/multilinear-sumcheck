@@ -205,7 +205,7 @@ fn soundness_tampered_claimed_sum_canonical() {
     let mut proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
 
-    proof.claimed_sum = proof.claimed_sum + fr(1);
+    proof.claimed_sum += fr(1);
 
     assert!(matches!(
         Verifier::verify(&proof, &ch, oracle),

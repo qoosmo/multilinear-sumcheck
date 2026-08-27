@@ -70,7 +70,7 @@ impl<F: Field> CanonicalDecomp<F> {
     #[inline]
     pub fn q(&self, j: usize) -> &CanonicalPoly<F> {
         assert!(
-            j >= 1 && j <= 2 * self.big_n - 1,
+            j >= 1 && j < 2 * self.big_n,
             "q index {j} out of range [1, {}]",
             2 * self.big_n - 1
         );
@@ -144,14 +144,14 @@ mod tests {
 
     #[test]
     fn node_count_is_2n_minus_1() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let d = CanonicalDecomp::build(&f);
         assert_eq!(d.nodes.len(), 15);
     }
 
     #[test]
     fn root_equals_input() {
-        let coeffs: Vec<Fr> = (0..8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (0..8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs.clone());
         let d = CanonicalDecomp::build(&f);
         assert_eq!(d.root().coeffs(), f.coeffs());
@@ -159,14 +159,14 @@ mod tests {
 
     #[test]
     fn total_field_elements_is_n_plus_1_times_n() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let d = CanonicalDecomp::build(&f);
         assert_eq!(d.total_field_elements(), (d.n + 1) * d.big_n);
     }
 
     #[test]
     fn layer_sizes_are_correct() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let d = CanonicalDecomp::build(&f);
         assert_eq!(d.layer(0).len(), 1);
         assert_eq!(d.layer(1).len(), 2);
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn node_coeff_sizes_decrease_by_layer() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let d = CanonicalDecomp::build(&f);
         assert_eq!(d.q(1).num_evals(), 8);
         assert_eq!(d.q(2).num_evals(), 4);
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn leaves_are_bit_reverse_permutation_of_root_n3() {
-        let f = CanonicalPoly::new((1..=8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((1..=8).map(fr).collect());
         let d = CanonicalDecomp::build(&f);
         assert!(d.leaves_are_bit_reverse_of_root());
     }

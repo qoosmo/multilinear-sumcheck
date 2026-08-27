@@ -244,8 +244,7 @@ impl<F: Field> UniPoly<F> {
         let mut buf = self.coeffs.clone();
 
         // At layer k (0-based from bottom), combine with r^{2^k}.
-        for k in 0..n {
-            let lambda = powers[k];
+        for &lambda in powers.iter().take(n) {
             let new_len = buf.len() / 2;
             for t in 0..new_len {
                 // buf[t] = buf[2t] + r^{2^k} · buf[2t+1]
@@ -412,7 +411,7 @@ impl<F: Field> UniDecomp<F> {
     #[inline]
     pub fn q(&self, j: usize) -> &[F] {
         assert!(
-            j >= 1 && j <= 2 * self.big_n - 1,
+            j >= 1 && j < 2 * self.big_n,
             "q index {j} out of range [1, {}]",
             2 * self.big_n - 1
         );
@@ -755,7 +754,7 @@ mod tests {
 
     #[test]
     fn all_methods_agree_n3() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let p = UniPoly::new(coeffs);
         for r in [fr(0), fr(1), fr(2), fr(7), fr(100)] {
             let naive = p.eval_naive(r);
@@ -788,7 +787,7 @@ mod tests {
     #[test]
     fn all_methods_agree_non_power_of_two_input() {
         // length 5 → padded to 8
-        let coeffs: Vec<Fr> = (1..=5).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=5).map(fr).collect();
         let p = UniPoly::new(coeffs);
         for r in [fr(0), fr(1), fr(3), fr(11)] {
             let naive = p.eval_naive(r);
@@ -813,20 +812,20 @@ mod tests {
 
     #[test]
     fn decompose_node_count() {
-        let d = UniPoly::new((0..8).map(|i| fr(i)).collect()).decompose();
+        let d = UniPoly::new((0..8).map(fr).collect()).decompose();
         assert_eq!(d.nodes.len(), 15);
     }
 
     #[test]
     fn decompose_root_equals_input() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let p = UniPoly::new(coeffs.clone());
         assert_eq!(p.decompose().root(), coeffs.as_slice());
     }
 
     #[test]
     fn decompose_layer_sizes() {
-        let d = UniPoly::new((0..8).map(|i| fr(i)).collect()).decompose();
+        let d = UniPoly::new((0..8).map(fr).collect()).decompose();
         assert_eq!(d.layer(0).len(), 1);
         assert_eq!(d.layer(1).len(), 2);
         assert_eq!(d.layer(2).len(), 4);
@@ -835,7 +834,7 @@ mod tests {
 
     #[test]
     fn decompose_total_field_elements() {
-        let d = UniPoly::new((0..8).map(|i| fr(i)).collect()).decompose();
+        let d = UniPoly::new((0..8).map(fr).collect()).decompose();
         assert_eq!(d.total_field_elements(), (d.n + 1) * d.big_n);
     }
 
@@ -873,7 +872,7 @@ mod tests {
 
     #[test]
     fn decompose_gate_relation_holds_n3() {
-        let p = UniPoly::new((1..=8).map(|i| fr(i)).collect());
+        let p = UniPoly::new((1..=8).map(fr).collect());
         let d = p.decompose();
         for j in 1..d.big_n {
             let qj = d.q(j);

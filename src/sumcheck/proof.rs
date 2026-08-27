@@ -3,9 +3,9 @@
 //! This module defines the two data types that constitute a Sumcheck proof:
 //!
 //! - [`RoundPoly`]     — the degree-1 polynomial `s_j(X_j) = a + b·X_j`
-//!                       sent by the prover at each round.
+//!   sent by the prover at each round.
 //! - [`SumcheckProof`] — the complete transcript: claimed sum `h` plus
-//!                       the `n` round polynomials `s_1, …, s_n`.
+//!   the `n` round polynomials `s_1, …, s_n`.
 //!
 //! # Protocol recap
 //!

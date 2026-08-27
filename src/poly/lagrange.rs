@@ -82,8 +82,7 @@ impl<F: Field> LagrangePoly<F> {
 
         let mut buf = self.evals.clone();
 
-        for k in 0..self.num_vars {
-            let r_k = r[k];
+        for &r_k in r.iter().take(self.num_vars) {
             let one_minus_r = F::one() - r_k;
             let half = buf.len() / 2;
             for t in 0..half {
@@ -116,8 +115,7 @@ impl<F: Field> LagrangePoly<F> {
 
         let mut buf = self.evals.clone();
 
-        for k in 0..self.num_vars {
-            let r_k = r[k];
+        for &r_k in r.iter().take(self.num_vars) {
             let half = buf.len() / 2;
             for t in 0..half {
                 buf[t] = buf[2 * t] + r_k * (buf[2 * t + 1] - buf[2 * t]);
@@ -164,8 +162,7 @@ impl<F: Field> LagrangePoly<F> {
         // Pre-allocate a reusable buffer — avoids one allocation per layer.
         let mut tmp = Vec::with_capacity(buf.len());
 
-        for k in 0..self.num_vars {
-            let r_k = r[k];
+        for &r_k in r.iter().take(self.num_vars) {
             tmp.clear();
             buf.par_chunks(2)
                 .map(|pair| pair[0] + r_k * (pair[1] - pair[0]))
@@ -349,7 +346,7 @@ mod tests {
 
     #[test]
     fn all_three_agree_at_boolean_points_n3() {
-        let p = LagrangePoly::new((1..=8).map(|i| fr(i)).collect());
+        let p = LagrangePoly::new((1..=8).map(fr).collect());
         for b0 in [fr(0), fr(1)] {
             for b1 in [fr(0), fr(1)] {
                 for b2 in [fr(0), fr(1)] {
@@ -379,7 +376,7 @@ mod tests {
     fn lagrange_eval_agrees_with_canonical_eval_circuit_n3() {
         use crate::circuit::LagrangeDecomp;
         use crate::poly::CanonicalPoly;
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let canon = CanonicalPoly::new(coeffs);
         let lag = LagrangeDecomp::build(&canon).to_lagrange();
         let r = [fr(3), fr(7), fr(13)];

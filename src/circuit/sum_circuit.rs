@@ -221,7 +221,7 @@ impl<F: Field> SumCircuit<F> for CanonicalSumCircuit<F> {
     #[inline]
     fn h(&self, j: usize) -> F {
         assert!(
-            j >= 1 && j <= 2 * self.big_n - 1,
+            j >= 1 && j < 2 * self.big_n,
             "h index {j} out of range [1, {}]",
             2 * self.big_n - 1
         );
@@ -339,7 +339,7 @@ impl<F: Field> SumCircuit<F> for LagrangeSumCircuit<F> {
     #[inline]
     fn h(&self, j: usize) -> F {
         assert!(
-            j >= 1 && j <= 2 * self.big_n - 1,
+            j >= 1 && j < 2 * self.big_n,
             "h index {j} out of range [1, {}]",
             2 * self.big_n - 1
         );
@@ -409,7 +409,7 @@ mod tests {
 
     #[test]
     fn canonical_root_equals_hypercube_sum_n3() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs);
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
@@ -425,14 +425,14 @@ mod tests {
 
     #[test]
     fn canonical_node_count() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.data.len(), 15);
     }
 
     #[test]
     fn canonical_layer_sizes() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.layer(0).len(), 1);
         assert_eq!(sc.layer(1).len(), 2);
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn canonical_leaves_slice_length() {
-        let f = CanonicalPoly::new((0..8).map(|i| fr(i)).collect());
+        let f = CanonicalPoly::new((0..8).map(fr).collect());
         let sc = CanonicalSumCircuit::build(&f);
         assert_eq!(sc.leaves().len(), 8);
     }
@@ -472,7 +472,7 @@ mod tests {
 
     #[test]
     fn lagrange_root_equals_hypercube_sum_n3() {
-        let evals: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let evals: Vec<Fr> = (1..=8).map(fr).collect();
         let f = LagrangePoly::new(evals);
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.root(), f.hypercube_sum());
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn lagrange_recurrence_holds_n3() {
-        let evals: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let evals: Vec<Fr> = (1..=8).map(fr).collect();
         let f = LagrangePoly::new(evals);
         let sc = LagrangeSumCircuit::build(&f);
         assert!(sc.verify_recurrence());
@@ -496,7 +496,7 @@ mod tests {
 
     #[test]
     fn lagrange_layer_sizes() {
-        let f = LagrangePoly::new((0..8).map(|i| fr(i)).collect());
+        let f = LagrangePoly::new((0..8).map(fr).collect());
         let sc = LagrangeSumCircuit::build(&f);
         assert_eq!(sc.layer(0).len(), 1);
         assert_eq!(sc.layer(1).len(), 2);
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn canonical_and_lagrange_agree_on_root_n3() {
         use crate::circuit::LagrangeDecomp;
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let canon = CanonicalPoly::new(coeffs);
         let lag = LagrangeDecomp::build(&canon).to_lagrange();
         let sc_canon = CanonicalSumCircuit::build(&canon);
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn canonical_from_leaves_matches_build() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs);
         let table = get_or_build(3);
         let manual_leaves: Vec<Fr> = (0..8).map(|k| f.coeffs()[table[k]]).collect();
@@ -547,7 +547,7 @@ mod tests {
 
     #[test]
     fn lagrange_from_leaves_matches_build() {
-        let evals: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let evals: Vec<Fr> = (1..=8).map(fr).collect();
         let f = LagrangePoly::new(evals);
         let table = get_or_build(3);
         let manual_leaves: Vec<Fr> = (0..8).map(|k| f.evals()[table[k]]).collect();

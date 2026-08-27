@@ -165,8 +165,7 @@ impl<F: Field> CanonicalPoly<F> {
         // (j₁ = 0) and q₃ holds odd-indexed coefficients (j₁ = 1).
         let mut buf = self.coeffs.clone();
 
-        for k in 0..self.num_vars {
-            let r_k = r[k];
+        for &r_k in r.iter().take(self.num_vars) {
             let half = buf.len() / 2;
             for t in 0..half {
                 buf[t] = buf[2 * t] + r_k * buf[2 * t + 1];
@@ -396,7 +395,7 @@ mod tests {
     #[test]
     fn naive_and_circuit_agree_at_boolean_points_n3() {
         // f = α₀ + α₁x₁ + … + α₇x₁x₂x₃
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs);
         for b0 in [fr(0), fr(1)] {
             for b1 in [fr(0), fr(1)] {
@@ -415,7 +414,7 @@ mod tests {
 
     #[test]
     fn naive_and_circuit_agree_at_random_point_n3() {
-        let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
+        let coeffs: Vec<Fr> = (1..=8).map(fr).collect();
         let f = CanonicalPoly::new(coeffs);
         // Use a fixed non-boolean point to test the general case.
         let r = [fr(2), fr(5), fr(11)];
