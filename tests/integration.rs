@@ -1,4 +1,4 @@
-//! End-to-end integration tests for the `mlp_pro` Sumcheck protocol.
+//! End-to-end integration tests for the `multilinear_sumcheck` Sumcheck protocol.
 //!
 //! These tests cross all module boundaries and verify the full pipeline:
 //!
@@ -21,20 +21,22 @@
 
 use ark_bn254::Fr;
 use ark_ff::{UniformRand, Zero};
-use ark_std::rand::SeedableRng;
 use ark_std::rand::rngs::StdRng;
+use ark_std::rand::SeedableRng;
 
-use mlp_pro::circuit::LagrangeDecomp;
-use mlp_pro::poly::{CanonicalPoly, LagrangePoly, MlPoly};
-use mlp_pro::sumcheck::proof::RoundPoly;
-use mlp_pro::sumcheck::prover::{CanonicalProver, LagrangeProver};
-use mlp_pro::sumcheck::verifier::{Verifier, VerifierError};
+use multilinear_sumcheck::circuit::LagrangeDecomp;
+use multilinear_sumcheck::poly::{CanonicalPoly, LagrangePoly, MlPoly};
+use multilinear_sumcheck::sumcheck::proof::RoundPoly;
+use multilinear_sumcheck::sumcheck::prover::{CanonicalProver, LagrangeProver};
+use multilinear_sumcheck::sumcheck::verifier::{Verifier, VerifierError};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn fr(n: u64) -> Fr { Fr::from(n) }
+fn fr(n: u64) -> Fr {
+    Fr::from(n)
+}
 
 /// Deterministic RNG — same seed across all tests.
 fn rng() -> StdRng {
@@ -79,7 +81,7 @@ fn lagrange(evals: &[u64]) -> LagrangePoly<Fr> {
 fn canonical_completeness_n1() {
     // f = 3 + 7x₁  →  H(f) = 3 + 3+7 = 13... wait: H = f(0)+f(1) = 3+10 = 13
     // canonical: H = 3·2^1 + 7·2^0 = 6+7 = 13
-    let f  = canon(&[3, 7]);
+    let f = canon(&[3, 7]);
     let ch = vec![fr(5)];
     let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
@@ -88,7 +90,7 @@ fn canonical_completeness_n1() {
 
 #[test]
 fn canonical_completeness_n2() {
-    let f  = canon(&[1, 2, 3, 4]);
+    let f = canon(&[1, 2, 3, 4]);
     let ch = vec![fr(5), fr(9)];
     let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
@@ -97,7 +99,7 @@ fn canonical_completeness_n2() {
 
 #[test]
 fn canonical_completeness_n3() {
-    let f  = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
@@ -106,7 +108,7 @@ fn canonical_completeness_n3() {
 
 #[test]
 fn canonical_completeness_n4() {
-    let f  = canon(&(1u64..=16).collect::<Vec<_>>());
+    let f = canon(&(1u64..=16).collect::<Vec<_>>());
     let ch = vec![fr(2), fr(5), fr(11), fr(7)];
     let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
@@ -115,7 +117,7 @@ fn canonical_completeness_n4() {
 
 #[test]
 fn canonical_completeness_random_n5() {
-    let f  = random_canonical(5);
+    let f = random_canonical(5);
     let ch = random_challenges(5);
     let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
@@ -125,7 +127,7 @@ fn canonical_completeness_random_n5() {
 #[test]
 fn canonical_completeness_random_n10() {
     // Uses the cached bit-reverse table for n=10.
-    let f  = random_canonical(10);
+    let f = random_canonical(10);
     let ch = random_challenges(10);
     let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
@@ -139,7 +141,7 @@ fn canonical_completeness_random_n10() {
 #[test]
 fn lagrange_completeness_n1() {
     // f(0)=3, f(1)=10  →  H = 13
-    let f  = lagrange(&[3, 10]);
+    let f = lagrange(&[3, 10]);
     let ch = vec![fr(5)];
     let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
@@ -148,7 +150,7 @@ fn lagrange_completeness_n1() {
 
 #[test]
 fn lagrange_completeness_n2() {
-    let f  = lagrange(&[1, 3, 4, 10]);
+    let f = lagrange(&[1, 3, 4, 10]);
     let ch = vec![fr(5), fr(9)];
     let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
@@ -157,7 +159,7 @@ fn lagrange_completeness_n2() {
 
 #[test]
 fn lagrange_completeness_n3() {
-    let f  = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
@@ -167,7 +169,7 @@ fn lagrange_completeness_n3() {
 #[test]
 fn lagrange_completeness_n4() {
     let evals: Vec<u64> = (0..16).map(|i| i * 2 + 1).collect();
-    let f  = lagrange(&evals);
+    let f = lagrange(&evals);
     let ch = vec![fr(2), fr(5), fr(11), fr(7)];
     let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
@@ -176,7 +178,7 @@ fn lagrange_completeness_n4() {
 
 #[test]
 fn lagrange_completeness_random_n5() {
-    let f  = random_lagrange(5);
+    let f = random_lagrange(5);
     let ch = random_challenges(5);
     let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
@@ -185,7 +187,7 @@ fn lagrange_completeness_random_n5() {
 
 #[test]
 fn lagrange_completeness_random_n10() {
-    let f  = random_lagrange(10);
+    let f = random_lagrange(10);
     let ch = random_challenges(10);
     let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
@@ -198,10 +200,10 @@ fn lagrange_completeness_random_n10() {
 
 #[test]
 fn soundness_tampered_claimed_sum_canonical() {
-    let f  = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let mut proof = CanonicalProver::new(&f).prove(&ch);
-    let oracle    = f.eval_circuit(&ch);
+    let oracle = f.eval_circuit(&ch);
 
     proof.claimed_sum = proof.claimed_sum + fr(1);
 
@@ -213,10 +215,10 @@ fn soundness_tampered_claimed_sum_canonical() {
 
 #[test]
 fn soundness_tampered_claimed_sum_lagrange() {
-    let f  = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let mut proof = LagrangeProver::new(&f).prove(&ch);
-    let oracle    = f.eval_optimized(&ch);
+    let oracle = f.eval_optimized(&ch);
 
     proof.claimed_sum = fr(0);
 
@@ -228,10 +230,10 @@ fn soundness_tampered_claimed_sum_lagrange() {
 
 #[test]
 fn soundness_tampered_mid_round_poly_canonical() {
-    let f  = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let mut proof = CanonicalProver::new(&f).prove(&ch);
-    let oracle    = f.eval_circuit(&ch);
+    let oracle = f.eval_circuit(&ch);
 
     // Replace round 2 with a random polynomial.
     proof.round_polys[1] = RoundPoly::new(fr(999), fr(888));
@@ -244,10 +246,10 @@ fn soundness_tampered_mid_round_poly_canonical() {
 
 #[test]
 fn soundness_tampered_mid_round_poly_lagrange() {
-    let f  = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let mut proof = LagrangeProver::new(&f).prove(&ch);
-    let oracle    = f.eval_optimized(&ch);
+    let oracle = f.eval_optimized(&ch);
 
     proof.round_polys[1] = RoundPoly::new(fr(777), fr(666));
 
@@ -259,7 +261,7 @@ fn soundness_tampered_mid_round_poly_lagrange() {
 
 #[test]
 fn soundness_wrong_oracle_canonical() {
-    let f  = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let proof = CanonicalProver::new(&f).prove(&ch);
 
@@ -272,7 +274,7 @@ fn soundness_wrong_oracle_canonical() {
 
 #[test]
 fn soundness_wrong_oracle_lagrange() {
-    let f  = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let f = lagrange(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let ch = vec![fr(3), fr(7), fr(11)];
     let proof = LagrangeProver::new(&f).prove(&ch);
 
@@ -284,14 +286,17 @@ fn soundness_wrong_oracle_lagrange() {
 
 #[test]
 fn soundness_wrong_challenge_count() {
-    let f     = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
-    let ch    = vec![fr(3), fr(7), fr(11)];
+    let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let ch = vec![fr(3), fr(7), fr(11)];
     let proof = CanonicalProver::new(&f).prove(&ch);
 
     // Pass only 2 challenges for a 3-variable proof.
     assert!(matches!(
         Verifier::verify(&proof, &[fr(3), fr(7)], fr(0)),
-        Err(VerifierError::ChallengeLengthMismatch { expected: 3, got: 2 })
+        Err(VerifierError::ChallengeLengthMismatch {
+            expected: 3,
+            got: 2
+        })
     ));
 }
 
@@ -299,15 +304,13 @@ fn soundness_wrong_challenge_count() {
 fn soundness_completely_random_proof_rejected() {
     // Build a valid proof structure with random garbage values.
     let mut rng = rng();
-    let n       = 4;
+    let n = 4;
     let round_polys: Vec<RoundPoly<Fr>> = (0..n)
         .map(|_| RoundPoly::new(Fr::rand(&mut rng), Fr::rand(&mut rng)))
         .collect();
-    let proof = mlp_pro::sumcheck::proof::SumcheckProof::new(
-        Fr::rand(&mut rng),
-        round_polys,
-    );
-    let ch     = random_challenges(n);
+    let proof =
+        multilinear_sumcheck::sumcheck::proof::SumcheckProof::new(Fr::rand(&mut rng), round_polys);
+    let ch = random_challenges(n);
     let oracle = Fr::rand(&mut rng);
 
     // A random proof almost surely fails — check it is indeed rejected.
@@ -324,9 +327,9 @@ fn soundness_completely_random_proof_rejected() {
 /// - both produce proofs that verify against the same oracle
 #[test]
 fn cross_basis_agree_n3() {
-    let canon_f    = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let canon_f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
     let lagrange_f = LagrangeDecomp::build(&canon_f).to_lagrange();
-    let ch         = vec![fr(3), fr(7), fr(11)];
+    let ch = vec![fr(3), fr(7), fr(11)];
 
     let cp = CanonicalProver::new(&canon_f);
     let lp = LagrangeProver::new(&lagrange_f);
@@ -337,8 +340,8 @@ fn cross_basis_agree_n3() {
     // Same round polynomials.
     for j in 1..=3 {
         assert_eq!(
-            cp.compute_round_poly(&ch[..j-1]),
-            lp.compute_round_poly(&ch[..j-1]),
+            cp.compute_round_poly(&ch[..j - 1]),
+            lp.compute_round_poly(&ch[..j - 1]),
             "round {j}"
         );
     }
@@ -355,38 +358,30 @@ fn cross_basis_agree_n3() {
 
 #[test]
 fn cross_basis_agree_n4() {
-    let canon_f    = canon(&(1u64..=16).collect::<Vec<_>>());
+    let canon_f = canon(&(1u64..=16).collect::<Vec<_>>());
     let lagrange_f = LagrangeDecomp::build(&canon_f).to_lagrange();
-    let ch         = vec![fr(2), fr(5), fr(11), fr(7)];
+    let ch = vec![fr(2), fr(5), fr(11), fr(7)];
 
     let oracle_c = canon_f.eval_circuit(&ch);
     let oracle_l = lagrange_f.eval_optimized(&ch);
     assert_eq!(oracle_c, oracle_l);
 
-    assert!(Verifier::verify(
-        &CanonicalProver::new(&canon_f).prove(&ch), &ch, oracle_c
-    ).is_ok());
-    assert!(Verifier::verify(
-        &LagrangeProver::new(&lagrange_f).prove(&ch), &ch, oracle_l
-    ).is_ok());
+    assert!(Verifier::verify(&CanonicalProver::new(&canon_f).prove(&ch), &ch, oracle_c).is_ok());
+    assert!(Verifier::verify(&LagrangeProver::new(&lagrange_f).prove(&ch), &ch, oracle_l).is_ok());
 }
 
 #[test]
 fn cross_basis_agree_random_n5() {
-    let canon_f    = random_canonical(5);
+    let canon_f = random_canonical(5);
     let lagrange_f = LagrangeDecomp::build(&canon_f).to_lagrange();
-    let ch         = random_challenges(5);
+    let ch = random_challenges(5);
 
     let oracle_c = canon_f.eval_circuit(&ch);
     let oracle_l = lagrange_f.eval_optimized(&ch);
     assert_eq!(oracle_c, oracle_l);
 
-    assert!(Verifier::verify(
-        &CanonicalProver::new(&canon_f).prove(&ch), &ch, oracle_c
-    ).is_ok());
-    assert!(Verifier::verify(
-        &LagrangeProver::new(&lagrange_f).prove(&ch), &ch, oracle_l
-    ).is_ok());
+    assert!(Verifier::verify(&CanonicalProver::new(&canon_f).prove(&ch), &ch, oracle_c).is_ok());
+    assert!(Verifier::verify(&LagrangeProver::new(&lagrange_f).prove(&ch), &ch, oracle_l).is_ok());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -395,9 +390,9 @@ fn cross_basis_agree_random_n5() {
 
 #[test]
 fn zero_polynomial_canonical() {
-    let f      = CanonicalPoly::<Fr>::zero(3);
-    let ch     = vec![fr(1), fr(2), fr(3)];
-    let proof  = CanonicalProver::new(&f).prove(&ch);
+    let f = CanonicalPoly::<Fr>::zero(3);
+    let ch = vec![fr(1), fr(2), fr(3)];
+    let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
 
     assert_eq!(proof.claimed_sum, Fr::zero());
@@ -407,9 +402,9 @@ fn zero_polynomial_canonical() {
 
 #[test]
 fn zero_polynomial_lagrange() {
-    let f      = LagrangePoly::<Fr>::zero(3);
-    let ch     = vec![fr(1), fr(2), fr(3)];
-    let proof  = LagrangeProver::new(&f).prove(&ch);
+    let f = LagrangePoly::<Fr>::zero(3);
+    let ch = vec![fr(1), fr(2), fr(3)];
+    let proof = LagrangeProver::new(&f).prove(&ch);
     let oracle = f.eval_optimized(&ch);
 
     assert_eq!(proof.claimed_sum, Fr::zero());
@@ -422,9 +417,9 @@ fn constant_polynomial_canonical() {
     // f = 5 (constant), H(f) = 5 * 2^n = 5 * 8 = 40 for n=3
     let mut coeffs = vec![Fr::zero(); 8];
     coeffs[0] = fr(5);
-    let f      = CanonicalPoly::new(coeffs);
-    let ch     = vec![fr(2), fr(3), fr(7)];
-    let proof  = CanonicalProver::new(&f).prove(&ch);
+    let f = CanonicalPoly::new(coeffs);
+    let ch = vec![fr(2), fr(3), fr(7)];
+    let proof = CanonicalProver::new(&f).prove(&ch);
     let oracle = f.eval_circuit(&ch);
 
     assert_eq!(proof.claimed_sum, fr(40));
@@ -436,40 +431,47 @@ fn constant_polynomial_canonical() {
 fn proof_size_grows_linearly_with_n() {
     // Proof has 2n+1 field elements.
     for n in [1, 2, 3, 4, 5] {
-        let f     = random_canonical(n);
-        let ch    = random_challenges(n);
+        let f = random_canonical(n);
+        let ch = random_challenges(n);
         let proof = CanonicalProver::new(&f).prove(&ch);
-        assert_eq!(proof.size_in_field_elements(), 2 * n + 1,
-            "proof size wrong for n={n}");
+        assert_eq!(
+            proof.size_in_field_elements(),
+            2 * n + 1,
+            "proof size wrong for n={n}"
+        );
     }
 }
 
 #[test]
 fn claimed_sum_matches_hypercube_sum_canonical() {
     for n in [1, 2, 3, 4] {
-        let f     = random_canonical(n);
-        let proof = CanonicalProver::new(&f)
-            .prove(&random_challenges(n));
-        assert_eq!(proof.claimed_sum, f.hypercube_sum(),
-            "claimed sum mismatch for n={n}");
+        let f = random_canonical(n);
+        let proof = CanonicalProver::new(&f).prove(&random_challenges(n));
+        assert_eq!(
+            proof.claimed_sum,
+            f.hypercube_sum(),
+            "claimed sum mismatch for n={n}"
+        );
     }
 }
 
 #[test]
 fn claimed_sum_matches_hypercube_sum_lagrange() {
     for n in [1, 2, 3, 4] {
-        let f     = random_lagrange(n);
-        let proof = LagrangeProver::new(&f)
-            .prove(&random_challenges(n));
-        assert_eq!(proof.claimed_sum, f.hypercube_sum(),
-            "claimed sum mismatch for n={n}");
+        let f = random_lagrange(n);
+        let proof = LagrangeProver::new(&f).prove(&random_challenges(n));
+        assert_eq!(
+            proof.claimed_sum,
+            f.hypercube_sum(),
+            "claimed sum mismatch for n={n}"
+        );
     }
 }
 
 #[test]
 fn verify_transcript_canonical_n3() {
-    let f     = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
-    let ch    = vec![fr(3), fr(7), fr(11)];
+    let f = canon(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    let ch = vec![fr(3), fr(7), fr(11)];
     let proof = CanonicalProver::new(&f).prove(&ch);
     // Internal consistency check without oracle.
     assert!(Verifier::verify_transcript(&proof, &ch).is_ok());
@@ -478,8 +480,8 @@ fn verify_transcript_canonical_n3() {
 #[test]
 fn verify_transcript_lagrange_n4() {
     let evals: Vec<u64> = (0..16).map(|i| i * 3 + 1).collect();
-    let f     = lagrange(&evals);
-    let ch    = vec![fr(2), fr(5), fr(9), fr(13)];
+    let f = lagrange(&evals);
+    let ch = vec![fr(2), fr(5), fr(9), fr(13)];
     let proof = LagrangeProver::new(&f).prove(&ch);
     assert!(Verifier::verify_transcript(&proof, &ch).is_ok());
 }

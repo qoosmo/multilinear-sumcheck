@@ -1,7 +1,7 @@
 use ark_ff::Field;
 
-use crate::poly::{CanonicalPoly, LagrangePoly, MlPoly};
 use super::bit_reverse_cache::get_or_build;
+use crate::poly::{CanonicalPoly, LagrangePoly, MlPoly};
 
 /// The full sequence `(p_j)_{1 ≤ j ≤ 2N-1}` from the canonical-to-Lagrange
 /// circuit decomposition of `f`.
@@ -50,7 +50,7 @@ impl<F: Field> LagrangeDecomp<F> {
     /// # Panics
     /// Panics if `f.num_evals()` is not a power of two greater than zero.
     pub fn build(f: &CanonicalPoly<F>) -> Self {
-        let n     = f.num_vars();
+        let n = f.num_vars();
         let big_n = f.num_evals();
 
         let mut nodes: Vec<Option<CanonicalPoly<F>>> = vec![None; 2 * big_n - 1];
@@ -63,13 +63,13 @@ impl<F: Field> LagrangeDecomp<F> {
         // At layer i, nodes are at 1-based indices [2^{i-1}, 2^i - 1].
         for i in 1..=n {
             let layer_start = 1usize << (i - 1); // 2^{i-1}  (1-based)
-            let layer_end   = 1usize << i;        // 2^i      (exclusive, 1-based)
+            let layer_end = 1usize << i; // 2^i      (exclusive, 1-based)
 
             for j in layer_start..layer_end {
                 // Take p_j out of its slot.
-                let pj    = nodes[j - 1].take().expect("node must be initialised");
+                let pj = nodes[j - 1].take().expect("node must be initialised");
                 let coeffs = pj.coeffs().to_vec();
-                let half   = coeffs.len() / 2;
+                let half = coeffs.len() / 2;
 
                 // Split p_j = a + x_i · b:
                 //   a  = even-indexed coefficients  (p_{2j})
@@ -87,7 +87,7 @@ impl<F: Field> LagrangeDecomp<F> {
 
                 // Store children.
                 nodes[2 * j - 1] = Some(CanonicalPoly::new(a));
-                nodes[2 * j]     = Some(CanonicalPoly::new(a_plus_b));
+                nodes[2 * j] = Some(CanonicalPoly::new(a_plus_b));
             }
         }
 
@@ -95,14 +95,18 @@ impl<F: Field> LagrangeDecomp<F> {
         let nodes: Vec<CanonicalPoly<F>> = nodes
             .into_iter()
             .enumerate()
-            .map(|(idx, opt)| {
-                opt.unwrap_or_else(|| panic!("node p_{} was not filled", idx + 1))
-            })
+            .map(|(idx, opt)| opt.unwrap_or_else(|| panic!("node p_{} was not filled", idx + 1)))
             .collect();
 
         let bit_rev_table = get_or_build(n).into_owned();
 
-        Self { n, big_n, nodes, bit_rev_table, addition_count }
+        Self {
+            n,
+            big_n,
+            nodes,
+            bit_rev_table,
+            addition_count,
+        }
     }
 
     // ── Accessors (paper notation) ────────────────────────────────────────────
@@ -115,7 +119,8 @@ impl<F: Field> LagrangeDecomp<F> {
     pub fn p(&self, j: usize) -> &CanonicalPoly<F> {
         assert!(
             j >= 1 && j <= 2 * self.big_n - 1,
-            "p index {j} out of range [1, {}]", 2 * self.big_n - 1
+            "p index {j} out of range [1, {}]",
+            2 * self.big_n - 1
         );
         &self.nodes[j - 1]
     }
@@ -132,7 +137,7 @@ impl<F: Field> LagrangeDecomp<F> {
     /// They are in **bit-reverse permutation order**:
     /// leaf `k` (0-based) holds `f(rev(k))`.
     pub fn leaves(&self) -> &[CanonicalPoly<F>] {
-        &self.nodes[self.big_n - 1 .. 2 * self.big_n - 1]
+        &self.nodes[self.big_n - 1..2 * self.big_n - 1]
     }
 
     /// Layer `i` (1-based, matching the paper): slice of nodes at depth `i`.
@@ -144,10 +149,13 @@ impl<F: Field> LagrangeDecomp<F> {
     /// # Panics
     /// Panics if `i == 0` or `i > n + 1`.
     pub fn layer(&self, i: usize) -> &[CanonicalPoly<F>] {
-        assert!(i >= 1 && i <= self.n + 1,
-            "layer {i} out of range [1, {}]", self.n + 1);
+        assert!(
+            i >= 1 && i <= self.n + 1,
+            "layer {i} out of range [1, {}]",
+            self.n + 1
+        );
         let start = (1usize << (i - 1)) - 1;
-        let end   = (1usize << i) - 1;
+        let end = (1usize << i) - 1;
         &self.nodes[start..end]
     }
 
@@ -164,7 +172,7 @@ impl<F: Field> LagrangeDecomp<F> {
         let mut evals = vec![F::zero(); self.big_n];
 
         for k in 0..self.big_n {
-            let rev_k  = self.bit_rev_table[k];
+            let rev_k = self.bit_rev_table[k];
             // leaf k holds f(rev(k)), so f(rev(k)) goes to position rev(k).
             evals[rev_k] = leaves[k].coeffs()[0];
         }
@@ -195,7 +203,9 @@ mod tests {
     use crate::poly::MlPoly;
     use ark_bn254::Fr;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── Structural properties ─────────────────────────────────────────────────
 
@@ -255,7 +265,7 @@ mod tests {
     /// p_3 = a + b   = [3,7,11,15]
     #[test]
     fn gate_rule_first_layer_n3() {
-        let coeffs = vec![fr(1),fr(2),fr(3),fr(4),fr(5),fr(6),fr(7),fr(8)];
+        let coeffs = vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)];
         let f = CanonicalPoly::new(coeffs);
         let d = LagrangeDecomp::build(&f);
 
@@ -272,13 +282,13 @@ mod tests {
         // p_3 = [3,7,11,15]: a=[3,11], b=[7,15]
         //   p_6 = a     = [3,11]
         //   p_7 = a+b   = [10,26]
-        let coeffs = vec![fr(1),fr(2),fr(3),fr(4),fr(5),fr(6),fr(7),fr(8)];
+        let coeffs = vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)];
         let f = CanonicalPoly::new(coeffs);
         let d = LagrangeDecomp::build(&f);
 
-        assert_eq!(d.p(4).coeffs(), &[fr(1),  fr(5)]);
-        assert_eq!(d.p(5).coeffs(), &[fr(4),  fr(12)]);
-        assert_eq!(d.p(6).coeffs(), &[fr(3),  fr(11)]);
+        assert_eq!(d.p(4).coeffs(), &[fr(1), fr(5)]);
+        assert_eq!(d.p(5).coeffs(), &[fr(4), fr(12)]);
+        assert_eq!(d.p(6).coeffs(), &[fr(3), fr(11)]);
         assert_eq!(d.p(7).coeffs(), &[fr(10), fr(26)]);
     }
 
@@ -323,9 +333,9 @@ mod tests {
         let d = LagrangeDecomp::build(&f);
         let leaves = d.leaves();
         // Each leaf is a single-coefficient poly.
-        assert_eq!(leaves[0].coeffs()[0], fr(1));  // f(0,0) = 1
-        assert_eq!(leaves[1].coeffs()[0], fr(4));  // f(0,1) = 4
-        assert_eq!(leaves[2].coeffs()[0], fr(3));  // f(1,0) = 3
+        assert_eq!(leaves[0].coeffs()[0], fr(1)); // f(0,0) = 1
+        assert_eq!(leaves[1].coeffs()[0], fr(4)); // f(0,1) = 4
+        assert_eq!(leaves[2].coeffs()[0], fr(3)); // f(1,0) = 3
         assert_eq!(leaves[3].coeffs()[0], fr(10)); // f(1,1) = 10
     }
 
@@ -345,8 +355,8 @@ mod tests {
     fn to_lagrange_hypercube_sum_matches_canonical_n3() {
         // H(f) must be the same whether computed from canonical or Lagrange.
         let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f   = CanonicalPoly::new(coeffs);
-        let d   = LagrangeDecomp::build(&f);
+        let f = CanonicalPoly::new(coeffs);
+        let d = LagrangeDecomp::build(&f);
         let lag = d.to_lagrange();
         assert_eq!(f.hypercube_sum(), lag.hypercube_sum());
     }
@@ -356,27 +366,21 @@ mod tests {
         // Every entry of the Lagrange eval vector must equal eval_circuit
         // of the canonical poly at the corresponding Boolean point.
         let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
-        let f   = CanonicalPoly::new(coeffs);
-        let d   = LagrangeDecomp::build(&f);
+        let f = CanonicalPoly::new(coeffs);
+        let d = LagrangeDecomp::build(&f);
         let lag = d.to_lagrange();
 
         for b in 0..8usize {
-            let point: Vec<Fr> = (0..3)
-                .map(|k| Fr::from(((b >> k) & 1) as u64))
-                .collect();
-            assert_eq!(
-                lag.evals()[b],
-                f.eval_circuit(&point),
-                "mismatch at b={b}"
-            );
+            let point: Vec<Fr> = (0..3).map(|k| Fr::from(((b >> k) & 1) as u64)).collect();
+            assert_eq!(lag.evals()[b], f.eval_circuit(&point), "mismatch at b={b}");
         }
     }
 
     #[test]
     fn to_lagrange_n1() {
         // f = 3 + 7x₁:  f(0)=3, f(1)=10
-        let f   = CanonicalPoly::new(vec![fr(3), fr(7)]);
-        let d   = LagrangeDecomp::build(&f);
+        let f = CanonicalPoly::new(vec![fr(3), fr(7)]);
+        let d = LagrangeDecomp::build(&f);
         let lag = d.to_lagrange();
         assert_eq!(lag.evals(), &[fr(3), fr(10)]);
     }

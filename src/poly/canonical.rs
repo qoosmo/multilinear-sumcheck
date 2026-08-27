@@ -102,8 +102,11 @@ impl<F: Field> CanonicalPoly<F> {
     /// Panics if `r.len() != num_vars`.
     pub fn eval_naive(&self, r: &[F]) -> F {
         assert_eq!(
-            r.len(), self.num_vars,
-            "eval_naive: expected {} variables, got {}", self.num_vars, r.len()
+            r.len(),
+            self.num_vars,
+            "eval_naive: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
         );
 
         self.coeffs
@@ -148,28 +151,31 @@ impl<F: Field> CanonicalPoly<F> {
     /// # Panics
     /// Panics if `r.len() != num_vars`.
     pub fn eval_circuit(&self, r: &[F]) -> F {
-    assert_eq!(
-        r.len(), self.num_vars,
-        "eval_circuit: expected {} variables, got {}", self.num_vars, r.len()
-    );
+        assert_eq!(
+            r.len(),
+            self.num_vars,
+            "eval_circuit: expected {} variables, got {}",
+            self.num_vars,
+            r.len()
+        );
 
-    // Working buffer: starts as a copy of the coefficient vector.
-    // We fold variable x₁ first (r[0]), then x₂ (r[1]), …, xₙ (r[n-1]).
-    // This matches the split rule: q₂ holds even-indexed coefficients
-    // (j₁ = 0) and q₃ holds odd-indexed coefficients (j₁ = 1).
-    let mut buf = self.coeffs.clone();
+        // Working buffer: starts as a copy of the coefficient vector.
+        // We fold variable x₁ first (r[0]), then x₂ (r[1]), …, xₙ (r[n-1]).
+        // This matches the split rule: q₂ holds even-indexed coefficients
+        // (j₁ = 0) and q₃ holds odd-indexed coefficients (j₁ = 1).
+        let mut buf = self.coeffs.clone();
 
-    for k in 0..self.num_vars {
-        let r_k  = r[k];
-        let half = buf.len() / 2;
-        for t in 0..half {
-            buf[t] = buf[2 * t] + r_k * buf[2 * t + 1];
+        for k in 0..self.num_vars {
+            let r_k = r[k];
+            let half = buf.len() / 2;
+            for t in 0..half {
+                buf[t] = buf[2 * t] + r_k * buf[2 * t + 1];
+            }
+            buf.truncate(half);
         }
-        buf.truncate(half);
-    }
 
-    buf[0]
-}
+        buf[0]
+    }
 }
 
 // ── MlPoly implementation ─────────────────────────────────────────────────────
@@ -188,7 +194,7 @@ impl<F: Field> MlPoly<F> for CanonicalPoly<F> {
                 if alpha.is_zero() {
                     acc
                 } else {
-                    let deg    = j.count_ones() as usize;
+                    let deg = j.count_ones() as usize;
                     let weight = F::from(1u64 << (n - deg));
                     acc + alpha * weight
                 }
@@ -207,7 +213,9 @@ mod tests {
     use ark_ff::One;
     use ark_ff::Zero;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── CanonicalTerm ─────────────────────────────────────────────────────────
 
@@ -397,7 +405,8 @@ mod tests {
                     assert_eq!(
                         f.eval_naive(&r),
                         f.eval_circuit(&r),
-                        "disagreement at r={:?}", r
+                        "disagreement at r={:?}",
+                        r
                     );
                 }
             }

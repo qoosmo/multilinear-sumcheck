@@ -41,7 +41,7 @@ pub fn get_bit_rev_table(n: usize) -> Option<&'static [usize]> {
         10 => Some(&BIT_REV_N10),
         15 => Some(&BIT_REV_N15),
         20 => Some(bit_rev_n20()),
-        _  => None,
+        _ => None,
     }
 }
 

@@ -161,7 +161,10 @@ pub struct SumcheckProof<F: Field> {
 impl<F: Field> SumcheckProof<F> {
     /// Construct a proof from a claimed sum and a vector of round polynomials.
     pub fn new(claimed_sum: F, round_polys: Vec<RoundPoly<F>>) -> Self {
-        Self { claimed_sum, round_polys }
+        Self {
+            claimed_sum,
+            round_polys,
+        }
     }
 
     /// Number of variables `n` — equals the number of rounds.
@@ -181,7 +184,8 @@ impl<F: Field> SumcheckProof<F> {
     pub fn round_poly(&self, j: usize) -> &RoundPoly<F> {
         assert!(
             j >= 1 && j <= self.round_polys.len(),
-            "round index {j} out of range [1, {}]", self.round_polys.len()
+            "round index {j} out of range [1, {}]",
+            self.round_polys.len()
         );
         &self.round_polys[j - 1]
     }
@@ -196,7 +200,9 @@ mod tests {
     use super::*;
     use ark_bn254::Fr;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── RoundPoly construction ────────────────────────────────────────────────
 
@@ -221,7 +227,7 @@ mod tests {
         let s1 = fr(13);
         let s = RoundPoly::from_evaluations(s0, s1);
         assert_eq!(s.eval_at_zero(), s0);
-        assert_eq!(s.eval_at_one(),  s1);
+        assert_eq!(s.eval_at_one(), s1);
     }
 
     // ── RoundPoly evaluation ──────────────────────────────────────────────────
@@ -287,10 +293,7 @@ mod tests {
 
     #[test]
     fn proof_size_is_2n_plus_1() {
-        let polys = vec![
-            RoundPoly::new(fr(1), fr(2)),
-            RoundPoly::new(fr(3), fr(4)),
-        ];
+        let polys = vec![RoundPoly::new(fr(1), fr(2)), RoundPoly::new(fr(3), fr(4))];
         let proof = SumcheckProof::new(fr(10), polys);
         // n=2: size = 2*2+1 = 5
         assert_eq!(proof.size_in_field_elements(), 5);
@@ -344,10 +347,7 @@ mod tests {
         let r1 = fr(3);
 
         // Round 1 check: s_1(0) + s_1(1) = claimed_sum
-        assert_eq!(
-            proof.round_poly(1).sum_over_boolean(),
-            proof.claimed_sum
-        );
+        assert_eq!(proof.round_poly(1).sum_over_boolean(), proof.claimed_sum);
 
         // Round 2 check: s_2(0) + s_2(1) = s_1(r_1)
         assert_eq!(

@@ -96,7 +96,10 @@ impl<F: Field> UniPoly<F> {
     /// # Panics
     /// Panics if `coeffs` is empty.
     pub fn new(coeffs: Vec<F>) -> Self {
-        assert!(!coeffs.is_empty(), "UniPoly: coefficient vector must not be empty");
+        assert!(
+            !coeffs.is_empty(),
+            "UniPoly: coefficient vector must not be empty"
+        );
 
         let actual_degree = coeffs
             .iter()
@@ -110,13 +113,16 @@ impl<F: Field> UniPoly<F> {
         let mut padded = coeffs;
         padded.resize(padded_len, F::zero());
 
-        Self { coeffs: padded, actual_degree }
+        Self {
+            coeffs: padded,
+            actual_degree,
+        }
     }
 
     /// The zero polynomial, internally stored with `2^n` coefficients.
     pub fn zero(n: usize) -> Self {
         Self {
-            coeffs:        vec![F::zero(); 1 << n],
+            coeffs: vec![F::zero(); 1 << n],
             actual_degree: 0,
         }
     }
@@ -154,7 +160,11 @@ impl<F: Field> UniPoly<F> {
     /// The coefficient of `Xᵏ`.
     /// Returns `F::zero()` for `k >= padded_len()`.
     pub fn coeff(&self, k: usize) -> F {
-        if k < self.coeffs.len() { self.coeffs[k] } else { F::zero() }
+        if k < self.coeffs.len() {
+            self.coeffs[k]
+        } else {
+            F::zero()
+        }
     }
 
     // ── Term views ────────────────────────────────────────────────────────────
@@ -186,8 +196,11 @@ impl<F: Field> UniPoly<F> {
             .iter()
             .enumerate()
             .fold(F::zero(), |acc, (k, &alpha)| {
-                if alpha.is_zero() { acc }
-                else { acc + UniTerm::new(alpha, k).eval(r) }
+                if alpha.is_zero() {
+                    acc
+                } else {
+                    acc + UniTerm::new(alpha, k).eval(r)
+                }
             })
     }
 
@@ -232,7 +245,7 @@ impl<F: Field> UniPoly<F> {
 
         // At layer k (0-based from bottom), combine with r^{2^k}.
         for k in 0..n {
-            let lambda  = powers[k];
+            let lambda = powers[k];
             let new_len = buf.len() / 2;
             for t in 0..new_len {
                 // buf[t] = buf[2t] + r^{2^k} · buf[2t+1]
@@ -267,7 +280,7 @@ impl<F: Field> UniPoly<F> {
     /// Sumcheck rounds), the bit-reversed layout can be cached.
     /// Each subsequent evaluation then skips the permutation step entirely.
     pub fn eval_circuit(&self, r: F) -> F {
-        let n     = self.log_len();
+        let n = self.log_len();
         let big_n = self.padded_len();
 
         // Power table: powers[k] = r^{2^k} for k = 0, …, n-1.
@@ -277,15 +290,13 @@ impl<F: Field> UniPoly<F> {
         // For n ∈ {10, 15, 20}: zero-cost borrow of the static cached table.
         // For other n: single heap allocation, used here and dropped.
         let table = get_or_build(n);
-        let mut buf: Vec<F> = (0..big_n)
-            .map(|k| self.coeffs[table[k]])
-            .collect();
+        let mut buf: Vec<F> = (0..big_n).map(|k| self.coeffs[table[k]]).collect();
 
         // Bottom-up fold.
         // Layer i from the bottom (i = 0 is the leaf layer):
         //   weight = powers[n-1-i] = r^{2^{n-1-i}}
         for i in 0..n {
-            let lambda  = powers[n - 1 - i];
+            let lambda = powers[n - 1 - i];
             let new_len = buf.len() / 2;
             for t in 0..new_len {
                 buf[t] = buf[2 * t] + lambda * buf[2 * t + 1];
@@ -322,16 +333,14 @@ impl<F: Field> UniPoly<F> {
     where
         F: Send + Sync,
     {
-        let n     = self.log_len();
+        let n = self.log_len();
         let big_n = self.padded_len();
 
         let powers = power_table(r, n);
 
         // For n ∈ {10, 15, 20}: zero-cost borrow of the static cached table.
         let table = get_or_build(n);
-        let mut buf: Vec<F> = (0..big_n)
-            .map(|k| self.coeffs[table[k]])
-            .collect();
+        let mut buf: Vec<F> = (0..big_n).map(|k| self.coeffs[table[k]]).collect();
 
         let mut tmp = Vec::with_capacity(big_n / 2);
 
@@ -353,7 +362,7 @@ impl<F: Field> UniPoly<F> {
     ///
     /// See [`UniDecomp`] for the complete documentation.
     pub fn decompose(&self) -> UniDecomp<F> {
-        let n     = self.log_len();
+        let n = self.log_len();
         let big_n = self.padded_len();
 
         let mut nodes: Vec<Vec<F>> = vec![Vec::new(); 2 * big_n - 1];
@@ -361,14 +370,14 @@ impl<F: Field> UniPoly<F> {
 
         for i in 0..n {
             let layer_start = 1usize << i;
-            let layer_end   = 1usize << (i + 1);
+            let layer_end = 1usize << (i + 1);
             for j in layer_start..layer_end {
                 let parent = nodes[j - 1].clone();
-                let half   = parent.len() / 2;
-                let left:  Vec<F> = (0..half).map(|r| parent[2 * r]).collect();
+                let half = parent.len() / 2;
+                let left: Vec<F> = (0..half).map(|r| parent[2 * r]).collect();
                 let right: Vec<F> = (0..half).map(|r| parent[2 * r + 1]).collect();
                 nodes[2 * j - 1] = left;
-                nodes[2 * j]     = right;
+                nodes[2 * j] = right;
             }
         }
 
@@ -404,25 +413,28 @@ impl<F: Field> UniDecomp<F> {
     pub fn q(&self, j: usize) -> &[F] {
         assert!(
             j >= 1 && j <= 2 * self.big_n - 1,
-            "q index {j} out of range [1, {}]", 2 * self.big_n - 1
+            "q index {j} out of range [1, {}]",
+            2 * self.big_n - 1
         );
         &self.nodes[j - 1]
     }
 
     /// The root `q_1` (full coefficient vector, size `N`).
     #[inline]
-    pub fn root(&self) -> &[F] { &self.nodes[0] }
+    pub fn root(&self) -> &[F] {
+        &self.nodes[0]
+    }
 
     /// Leaf layer: `q_N, …, q_{2N-1}`, each of size 1.
     pub fn leaves(&self) -> &[Vec<F>] {
-        &self.nodes[self.big_n - 1 .. 2 * self.big_n - 1]
+        &self.nodes[self.big_n - 1..2 * self.big_n - 1]
     }
 
     /// Layer `i` (0-based): slice of node vectors at depth `i`.
     pub fn layer(&self, i: usize) -> &[Vec<F>] {
         assert!(i <= self.n, "layer {i} out of range [0, {}]", self.n);
         let start = (1usize << i) - 1;
-        let end   = (1usize << (i + 1)) - 1;
+        let end = (1usize << (i + 1)) - 1;
         &self.nodes[start..end]
     }
 
@@ -440,9 +452,11 @@ impl<F: Field> UniDecomp<F> {
 fn field_pow<F: Field>(mut base: F, mut exp: usize) -> F {
     let mut result = F::one();
     while exp > 0 {
-        if exp & 1 == 1 { result *= base; }
-        base  *= base;
-        exp  >>= 1;
+        if exp & 1 == 1 {
+            result *= base;
+        }
+        base *= base;
+        exp >>= 1;
     }
     result
 }
@@ -454,12 +468,14 @@ fn field_pow<F: Field>(mut base: F, mut exp: usize) -> F {
 ///
 /// Used by `eval_estrin`, `eval_circuit`, and `eval_circuit_parallel`.
 fn power_table<F: Field>(r: F, n: usize) -> Vec<F> {
-    if n == 0 { return vec![]; }
+    if n == 0 {
+        return vec![];
+    }
     let mut powers = Vec::with_capacity(n);
-    powers.push(r);                          // r^{2^0} = r
+    powers.push(r); // r^{2^0} = r
     for k in 1..n {
         let prev = powers[k - 1];
-        powers.push(prev * prev);            // r^{2^k} = (r^{2^{k-1}})²
+        powers.push(prev * prev); // r^{2^k} = (r^{2^{k-1}})²
     }
     powers
 }
@@ -474,7 +490,9 @@ mod tests {
     use ark_bn254::Fr;
     use ark_ff::Zero;
 
-    fn fr(n: u64) -> Fr { Fr::from(n) }
+    fn fr(n: u64) -> Fr {
+        Fr::from(n)
+    }
 
     // ── UniTerm ───────────────────────────────────────────────────────────────
 
@@ -592,19 +610,28 @@ mod tests {
 
     #[test]
     fn all_terms_includes_padding() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3)]).all_terms().count(), 4);
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3)]).all_terms().count(),
+            4
+        );
     }
 
     // ── eval_naive ────────────────────────────────────────────────────────────
 
     #[test]
     fn eval_naive_at_zero_returns_constant() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_naive(fr(0)), fr(1));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_naive(fr(0)),
+            fr(1)
+        );
     }
 
     #[test]
     fn eval_naive_at_one_returns_sum() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_naive(fr(1)), fr(10));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_naive(fr(1)),
+            fr(10)
+        );
     }
 
     #[test]
@@ -616,12 +643,18 @@ mod tests {
 
     #[test]
     fn eval_horner_at_zero() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_horner(fr(0)), fr(1));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_horner(fr(0)),
+            fr(1)
+        );
     }
 
     #[test]
     fn eval_horner_at_one() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_horner(fr(1)), fr(10));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_horner(fr(1)),
+            fr(10)
+        );
     }
 
     #[test]
@@ -631,15 +664,15 @@ mod tests {
 
     // ── power_table ───────────────────────────────────────────────────────────
 
-#[test]
-fn power_table_n3() {
-    // r=2: powers[0]=r^1=2, powers[1]=r^2=4, powers[2]=r^4=16
-    let pt = power_table(fr(2), 3);
-    assert_eq!(pt.len(), 3);
-    assert_eq!(pt[0], fr(2));    // r^1 = 2
-    assert_eq!(pt[1], fr(4));    // r^2 = 4
-    assert_eq!(pt[2], fr(16));   // r^4 = 16
-}
+    #[test]
+    fn power_table_n3() {
+        // r=2: powers[0]=r^1=2, powers[1]=r^2=4, powers[2]=r^4=16
+        let pt = power_table(fr(2), 3);
+        assert_eq!(pt.len(), 3);
+        assert_eq!(pt[0], fr(2)); // r^1 = 2
+        assert_eq!(pt[1], fr(4)); // r^2 = 4
+        assert_eq!(pt[2], fr(16)); // r^4 = 16
+    }
 
     #[test]
     fn power_table_n0_is_empty() {
@@ -650,7 +683,7 @@ fn power_table_n3() {
     fn power_table_each_entry_is_square_of_previous() {
         let pt = power_table(fr(3), 5);
         for k in 1..5 {
-            assert_eq!(pt[k], pt[k-1] * pt[k-1]);
+            assert_eq!(pt[k], pt[k - 1] * pt[k - 1]);
         }
     }
 
@@ -658,12 +691,18 @@ fn power_table_n3() {
 
     #[test]
     fn eval_estrin_at_zero() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_estrin(fr(0)), fr(1));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_estrin(fr(0)),
+            fr(1)
+        );
     }
 
     #[test]
     fn eval_estrin_at_one() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_estrin(fr(1)), fr(10));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_estrin(fr(1)),
+            fr(10)
+        );
     }
 
     #[test]
@@ -675,12 +714,18 @@ fn power_table_n3() {
 
     #[test]
     fn eval_circuit_at_zero() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_circuit(fr(0)), fr(1));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_circuit(fr(0)),
+            fr(1)
+        );
     }
 
     #[test]
     fn eval_circuit_at_one() {
-        assert_eq!(UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_circuit(fr(1)), fr(10));
+        assert_eq!(
+            UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4)]).eval_circuit(fr(1)),
+            fr(10)
+        );
     }
 
     #[test]
@@ -713,14 +758,14 @@ fn power_table_n3() {
         let coeffs: Vec<Fr> = (1..=8).map(|i| fr(i)).collect();
         let p = UniPoly::new(coeffs);
         for r in [fr(0), fr(1), fr(2), fr(7), fr(100)] {
-            let naive    = p.eval_naive(r);
-            let horner   = p.eval_horner(r);
-            let estrin   = p.eval_estrin(r);
-            let circuit  = p.eval_circuit(r);
+            let naive = p.eval_naive(r);
+            let horner = p.eval_horner(r);
+            let estrin = p.eval_estrin(r);
+            let circuit = p.eval_circuit(r);
             let parallel = p.eval_circuit_parallel(r);
-            assert_eq!(naive, horner,   "naive vs horner   at r={r}");
-            assert_eq!(naive, estrin,   "naive vs estrin   at r={r}");
-            assert_eq!(naive, circuit,  "naive vs circuit  at r={r}");
+            assert_eq!(naive, horner, "naive vs horner   at r={r}");
+            assert_eq!(naive, estrin, "naive vs estrin   at r={r}");
+            assert_eq!(naive, circuit, "naive vs circuit  at r={r}");
             assert_eq!(naive, parallel, "naive vs parallel at r={r}");
         }
     }
@@ -730,13 +775,13 @@ fn power_table_n3() {
         let coeffs: Vec<Fr> = (0..16).map(|i| fr(i as u64 * 3 + 1)).collect();
         let p = UniPoly::new(coeffs);
         for r in [fr(1), fr(3), fr(11), fr(255)] {
-            let naive   = p.eval_naive(r);
+            let naive = p.eval_naive(r);
             let circuit = p.eval_circuit(r);
-            let estrin  = p.eval_estrin(r);
-            let par     = p.eval_circuit_parallel(r);
+            let estrin = p.eval_estrin(r);
+            let par = p.eval_circuit_parallel(r);
             assert_eq!(naive, circuit, "circuit  at r={r}");
-            assert_eq!(naive, estrin,  "estrin   at r={r}");
-            assert_eq!(naive, par,     "parallel at r={r}");
+            assert_eq!(naive, estrin, "estrin   at r={r}");
+            assert_eq!(naive, par, "parallel at r={r}");
         }
     }
 
@@ -746,10 +791,10 @@ fn power_table_n3() {
         let coeffs: Vec<Fr> = (1..=5).map(|i| fr(i)).collect();
         let p = UniPoly::new(coeffs);
         for r in [fr(0), fr(1), fr(3), fr(11)] {
-            let naive   = p.eval_naive(r);
-            let horner  = p.eval_horner(r);
+            let naive = p.eval_naive(r);
+            let horner = p.eval_horner(r);
             let circuit = p.eval_circuit(r);
-            assert_eq!(naive, horner,  "at r={r}");
+            assert_eq!(naive, horner, "at r={r}");
             assert_eq!(naive, circuit, "at r={r}");
         }
     }
@@ -757,7 +802,7 @@ fn power_table_n3() {
     #[test]
     fn padding_does_not_change_eval_circuit() {
         // f = 1 + 2X + 3X² (length 3 → padded to 4)
-        let p_short  = UniPoly::new(vec![fr(1), fr(2), fr(3)]);
+        let p_short = UniPoly::new(vec![fr(1), fr(2), fr(3)]);
         let p_padded = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(0)]);
         for r in [fr(0), fr(1), fr(2), fr(7)] {
             assert_eq!(p_short.eval_circuit(r), p_padded.eval_circuit(r));
@@ -796,28 +841,28 @@ fn power_table_n3() {
 
     #[test]
     fn decompose_first_layer_paper_example_n3() {
-        let p = UniPoly::new(vec![fr(1),fr(2),fr(3),fr(4),fr(5),fr(6),fr(7),fr(8)]);
+        let p = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)]);
         let d = p.decompose();
-        assert_eq!(d.q(2), &[fr(1),fr(3),fr(5),fr(7)]);
-        assert_eq!(d.q(3), &[fr(2),fr(4),fr(6),fr(8)]);
+        assert_eq!(d.q(2), &[fr(1), fr(3), fr(5), fr(7)]);
+        assert_eq!(d.q(3), &[fr(2), fr(4), fr(6), fr(8)]);
     }
 
     #[test]
     fn decompose_second_layer_paper_example_n3() {
-        let p = UniPoly::new(vec![fr(1),fr(2),fr(3),fr(4),fr(5),fr(6),fr(7),fr(8)]);
+        let p = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)]);
         let d = p.decompose();
-        assert_eq!(d.q(4), &[fr(1),fr(5)]);
-        assert_eq!(d.q(5), &[fr(3),fr(7)]);
-        assert_eq!(d.q(6), &[fr(2),fr(6)]);
-        assert_eq!(d.q(7), &[fr(4),fr(8)]);
+        assert_eq!(d.q(4), &[fr(1), fr(5)]);
+        assert_eq!(d.q(5), &[fr(3), fr(7)]);
+        assert_eq!(d.q(6), &[fr(2), fr(6)]);
+        assert_eq!(d.q(7), &[fr(4), fr(8)]);
     }
 
     #[test]
     fn decompose_leaves_paper_example_n3() {
-        let p = UniPoly::new(vec![fr(1),fr(2),fr(3),fr(4),fr(5),fr(6),fr(7),fr(8)]);
+        let p = UniPoly::new(vec![fr(1), fr(2), fr(3), fr(4), fr(5), fr(6), fr(7), fr(8)]);
         let d = p.decompose();
-        assert_eq!(d.q(8),  &[fr(1)]);
-        assert_eq!(d.q(9),  &[fr(5)]);
+        assert_eq!(d.q(8), &[fr(1)]);
+        assert_eq!(d.q(9), &[fr(5)]);
         assert_eq!(d.q(10), &[fr(3)]);
         assert_eq!(d.q(11), &[fr(7)]);
         assert_eq!(d.q(12), &[fr(2)]);
@@ -831,12 +876,12 @@ fn power_table_n3() {
         let p = UniPoly::new((1..=8).map(|i| fr(i)).collect());
         let d = p.decompose();
         for j in 1..d.big_n {
-            let qj    = d.q(j);
-            let left  = d.q(2 * j);
+            let qj = d.q(j);
+            let left = d.q(2 * j);
             let right = d.q(2 * j + 1);
             for r in 0..qj.len() / 2 {
-                assert_eq!(qj[2*r],   left[r],  "j={j} left  r={r}");
-                assert_eq!(qj[2*r+1], right[r], "j={j} right r={r}");
+                assert_eq!(qj[2 * r], left[r], "j={j} left  r={r}");
+                assert_eq!(qj[2 * r + 1], right[r], "j={j} right r={r}");
             }
         }
     }
